@@ -1,5 +1,5 @@
 
-#include "imx6sll-e80k02-base.dts"
+#include "imx6sll-e60k02-base.dts"
 
 &i2c2 {
 	tps6518x@68 {
