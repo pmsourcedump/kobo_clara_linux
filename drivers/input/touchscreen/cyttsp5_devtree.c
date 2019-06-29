@@ -291,9 +291,14 @@ static void *create_and_get_mt_pdata(struct device_node *dev_node)
 			pdata->flags &= ~(CY_MT_FLAG_FLIP|CY_MT_FLAG_INV_X|CY_MT_FLAG_INV_Y);
 			if(0==gptHWCFG->m_val.bUIStyle) {
 				// Ebrmain .
+
 				if(gptHWCFG->m_val.bPCB== 74 || gptHWCFG->m_val.bPCB== 73 ) // E60K00:74 , E60U10:73
 				{	
 					pdata->flags |= CY_MT_FLAG_INV_Y ;
+				}
+				else if(75==gptHWCFG->m_val.bPCB) // E80K02
+				{
+					pdata->flags |= ( CY_MT_FLAG_INV_X | CY_MT_FLAG_FLIP) ;
 				}
 				else
 				{	
@@ -305,6 +310,10 @@ static void *create_and_get_mt_pdata(struct device_node *dev_node)
 				if(gptHWCFG->m_val.bPCB== 74 || gptHWCFG->m_val.bPCB== 73 ) // E60K00:74 , E60U10:73
 				{	
 					//pdata->flags |= CY_MT_FLAG_INV_Y ;
+				}
+				else if(75==gptHWCFG->m_val.bPCB) // E80K02
+				{
+					pdata->flags |= ( CY_MT_FLAG_INV_Y |CY_MT_FLAG_INV_X | CY_MT_FLAG_FLIP) ;
 				}
 				else
 				{

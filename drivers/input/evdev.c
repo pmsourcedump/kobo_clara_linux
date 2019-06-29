@@ -555,7 +555,6 @@ static ssize_t evdev_read(struct file *file, char __user *buffer,
 
 		while (read + input_event_size() <= count &&
 		       evdev_fetch_next_event(client, &event)) {
-
 			if (input_event_to_user(buffer + read, &event))
 				return -EFAULT;
 
@@ -1207,6 +1206,35 @@ static int evdev_connect(struct input_handler *handler, struct input_dev *dev,
  err_free_minor:
 	input_free_minor(minor);
 	return error;
+}
+
+int evdev_check_event (struct input_handle *handle)
+{
+	struct evdev *evdev = handle->private;
+	struct evdev_client *client;
+
+
+	client = rcu_dereference(evdev->grab);
+	if (client) 
+	{
+#if 0
+		printk ("[%s-%d] %s\n", __func__, __LINE__, evdev->handle.name);
+		if (client->packet_head != client->tail) {
+			printk ("[%s-%d] %s head %X, tail %X\n", __func__, __LINE__, evdev->handle.name, client->packet_head, client->tail);
+			return 1;
+		}
+#endif
+	}
+	else 
+	{
+		list_for_each_entry_rcu(client, &evdev->client_list, node) {
+			if (client->packet_head != client->tail) {
+				printk ("[%s-%d] %s head %X, tail %X\n", __func__, __LINE__, evdev->handle.name, client->packet_head, client->tail);
+				return 1;
+			}
+		}
+	}
+	return 0;
 }
 
 static void evdev_disconnect(struct input_handle *handle)

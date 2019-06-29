@@ -123,7 +123,7 @@
 		ricoh619_ldo1_reg: regulator@5  {
 			reg = <5>;
 			regulator-compatible = "ricoh619_ldo1";
-			regulator-always-on;
+			//regulator-always-on;
 			regulator-boot-on;
 		};
 		ricoh619_ldo2_reg: regulator@6  {

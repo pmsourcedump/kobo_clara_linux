@@ -337,8 +337,13 @@ static int lm3630a_bank_a_update_status(struct backlight_device *bl)
 		ret |= lm3630a_update(pchip,REG_I_A,0x1F,bl->props.power);
 	}
 
-	if (bl->props.brightness < 0x1)
+	if (bl->props.brightness < 0x1) {
 		ret |= lm3630a_update(pchip, REG_CTRL, LM3630A_LEDA_ENABLE, 0);
+		if (!(lm3630a_read(pchip, REG_CTRL) & LM3630A_LEDB_ENABLE)) {
+			// Enter sleep mode if both led are disabled.
+			ret = lm3630a_update(pchip, REG_CTRL, 0x80, 0x80);
+		}
+	}
 	else
 		ret |= lm3630a_update(pchip, REG_CTRL,
 				      LM3630A_LEDA_ENABLE, LM3630A_LEDA_ENABLE);
@@ -473,8 +478,14 @@ static int lm3630a_bank_b_update_status(struct backlight_device *bl)
 	if( 0x20 > bl->props.power ) {
 		ret |= lm3630a_write(pchip,REG_I_B,bl->props.power);
 	}
-	if (bl->props.brightness < 0x1)
+
+	if (bl->props.brightness < 0x1) {
 		ret |= lm3630a_update(pchip, REG_CTRL, LM3630A_LEDB_ENABLE, 0);
+		if (!(lm3630a_read(pchip, REG_CTRL) & LM3630A_LEDA_ENABLE)) {
+			// Enter sleep mode if both led are disabled.
+			ret = lm3630a_update(pchip, REG_CTRL, 0x80, 0x80);
+		}
+	}
 	else
 		ret |= lm3630a_update(pchip, REG_CTRL,
 				      LM3630A_LEDB_ENABLE, LM3630A_LEDB_ENABLE);
@@ -1057,8 +1068,13 @@ static void _lm3630a_set_FL (struct lm3630a_chip *pchip,
 		bLedB_Enable=LM3630A_LEDB_ENABLE;
 	}
 
-	lm3630a_update(pchip, REG_CTRL,
+	if (bLedA_Enable|bLedB_Enable)
+		lm3630a_update(pchip, REG_CTRL,
 			LM3630A_LEDA_ENABLE|LM3630A_LEDB_ENABLE, bLedA_Enable|bLedB_Enable);
+	else {
+		// Enter sleep mode if both led are disabled.
+		ret = lm3630a_update(pchip, REG_CTRL, 0x80|LM3630A_LEDA_ENABLE|LM3630A_LEDB_ENABLE, 0x80);
+	}
 
 
 	pchip->ulFLRampWaitTick = jiffies+gdwRamp_lvl_wait_ticksA[iRampLvl];

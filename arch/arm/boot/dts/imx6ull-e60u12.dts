@@ -939,9 +939,6 @@
 	pinctrl-0 = <&pinctrl_usdhc1>, <&pinctrl_usdhc1_pwr>;
 	pinctrl-1 = <&pinctrl_usdhc1_sleep>;
 	vmmc-supply = <&reg_sd1_vmmc>;
-	non-removable;
-	cd-post;
-	pm-ignore-notify;
 	wifi-host;
 	status = "okay";
 };

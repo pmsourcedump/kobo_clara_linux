@@ -69,6 +69,10 @@ static const u8 cyttsp5_security_key[] = {
 
 #define CY_POST_TT_CFG_CRC_MASK				0x2
 
+#define CY_FW_UPGRADE_OFF				0
+#define CY_FW_UPGRADE_INPROGRESS			1
+#define CY_FW_UPGRADE_FAILED				2
+
 struct cyttsp5_loader_data {
 	struct device *dev;
 	struct cyttsp5_sysinfo *si;
@@ -79,6 +83,7 @@ struct cyttsp5_loader_data {
 	struct completion builtin_bin_fw_complete;
 	int builtin_bin_fw_status;
 	bool is_manual_upgrade_enabled;
+	int bin_fw_upgrade_status;
 #endif
 	struct work_struct fw_and_config_upgrade;
 	struct work_struct calibration_work;
@@ -483,6 +488,8 @@ static int cyttsp5_upgrade_firmware(struct device *dev, const u8 *fw_img,
 	if (rc < 0)
 		goto exit;
 
+	ld->bin_fw_upgrade_status = CY_FW_UPGRADE_INPROGRESS;
+
 	while (retry--) {
 		rc = cyttsp5_load_app_(dev, fw_img, fw_size);
 		if (rc < 0)
@@ -495,6 +502,7 @@ static int cyttsp5_upgrade_firmware(struct device *dev, const u8 *fw_img,
 	if (rc < 0) {
 		dev_err(dev, "%s: Firmware update failed with error code %d\n",
 			__func__, rc);
+		ld->bin_fw_upgrade_status = CY_FW_UPGRADE_FAILED;
 	} else if (ld->loader_pdata &&
 			(ld->loader_pdata->flags
 			 & CY_LOADER_FLAG_CALIBRATE_AFTER_FW_UPGRADE)) {
@@ -519,6 +527,7 @@ static int cyttsp5_upgrade_firmware(struct device *dev, const u8 *fw_img,
 	}
 
 	cmd->release_exclusive(dev);
+	ld->bin_fw_upgrade_status = CY_FW_UPGRADE_OFF;
 
 exit:
 	if (!rc)
@@ -1401,6 +1410,30 @@ static ssize_t cyttsp5_manual_upgrade_store(struct device *dev,
 
 static DEVICE_ATTR(manual_upgrade, S_IWUSR,
 	NULL, cyttsp5_manual_upgrade_store);
+
+static ssize_t cyttsp5_bin_fw_upgrade_status_show(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct cyttsp5_loader_data *ld = cyttsp5_get_loader_data(dev);
+
+	switch (ld->bin_fw_upgrade_status) {
+	case CY_FW_UPGRADE_OFF:
+		return snprintf(buf, CY_MAX_PRBUF_SIZE,
+			"Not upgrading\n");
+	case CY_FW_UPGRADE_INPROGRESS:
+		return snprintf(buf, CY_MAX_PRBUF_SIZE,
+			"Upgrading\n");
+	case CY_FW_UPGRADE_FAILED:
+		return snprintf(buf, CY_MAX_PRBUF_SIZE,
+			"Failed\n");
+	default:
+		return snprintf(buf, CY_MAX_PRBUF_SIZE,
+			"Undefined\n");
+	}
+}
+
+static DEVICE_ATTR(bin_fw_upgrade_status, S_IRUSR,
+	cyttsp5_bin_fw_upgrade_status_show, NULL);
 #endif
 
 static int cyttsp5_loader_probe(struct device *dev, void **data)
@@ -1436,6 +1469,13 @@ static int cyttsp5_loader_probe(struct device *dev, void **data)
 		dev_err(dev, "%s: Error, could not create manual_upgrade\n",
 				__func__);
 		goto error_create_manual_upgrade;
+	}
+	
+	rc = device_create_file(dev, &dev_attr_bin_fw_upgrade_status);
+	if (rc) {
+		dev_err(dev, "%s: Error, could not create bin_fw_upgrade_status\n",
+				__func__);
+		goto error_create_bin_fw_upgrade_status;
 	}
 #endif
 
@@ -1495,6 +1535,8 @@ error_create_config_data:
 error_create_config_loading:
 #endif
 #ifdef CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP5_BINARY_FW_UPGRADE
+	device_remove_file(dev, &dev_attr_bin_fw_upgrade_status);
+error_create_bin_fw_upgrade_status:
 	device_remove_file(dev, &dev_attr_manual_upgrade);
 error_create_manual_upgrade:
 #endif

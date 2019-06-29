@@ -29,6 +29,9 @@
 #include "otg.h"
 #include "otg_fsm.h"
 
+#include "../../../arch/arm/mach-imx/ntx_hwconfig.h"
+extern volatile NTX_HWCONFIG *gptHWCFG;
+
 /* control endpoint description */
 static const struct usb_endpoint_descriptor
 ctrl_endpt_out_desc = {
@@ -2025,6 +2028,10 @@ void ci_hdrc_gadget_connect(struct usb_gadget *gadget, int is_active)
 	struct ci_hdrc *ci = container_of(gadget, struct ci_hdrc, gadget);
 
 	if (is_active) {
+		if (0x03==gptHWCFG->m_val.bUIConfig) {
+			// sleep 500ms for mp mode to avoid gadget effect ricoh charger recognization.
+			msleep (500);
+		}
 		pm_runtime_get_sync(&gadget->dev);
 		hw_device_reset(ci);
 		hw_device_state(ci, ci->ep0out->qh.dma);

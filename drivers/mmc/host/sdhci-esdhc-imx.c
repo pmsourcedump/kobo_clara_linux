@@ -257,8 +257,8 @@ static const struct of_device_id imx_esdhc_dt_ids[] = {
 };
 MODULE_DEVICE_TABLE(of, imx_esdhc_dt_ids);
 
-static struct sdhci_host *wifi_mmc_host;
-static int wifi_pwr_status;
+struct sdhci_host *wifi_mmc_host;
+int wifi_pwr_status;
 void wifi_card_detect(bool on)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(wifi_mmc_host);

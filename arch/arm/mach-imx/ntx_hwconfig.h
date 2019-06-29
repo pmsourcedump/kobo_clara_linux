@@ -8,10 +8,12 @@ extern "C" {
 
 
 #define NTX_HWCFG_MAGIC				"HW CONFIG "
-#define NTX_HWCFG_VER					"v2.7"
+#define NTX_HWCFG_VER					"v3.0"
 
 #define SYSHWCONFIG_SEEKSIZE	(1024*512)
 
+
+#define NTX_HWCFG_INIT_BIN_SIZE 	110 // ntx_hwconfig binary size .
 
 typedef struct tagNTXHWCFG_HDR {
 	char cMagicNameA[10];// should be "HW CONFIG "
@@ -83,13 +85,24 @@ typedef struct tagNTXHWCFG_VAL {
 	unsigned char bTPFWIDByte6;// TP firmware ID byte6 .
 	unsigned char bTPFWIDByte7;// TP firmware ID byte7 .
 	unsigned char bGPU; //GPU .
+	unsigned char bPCB_Flags2;// PCB Flags2 .
+	unsigned char bEPD_Flags;// EPD Flags .
+	unsigned char bLAN; // LAN PHYs .
+	unsigned char bMobileIF; // Mobile Interface .
+	unsigned char bPIR; // PIR motion sensor .
+	unsigned char bPanelLaminationSrc; // Touch/Display Lamination source.
 } NTXHWCFG_VAL ;
+
+
+#define NTX_HWCFG_MAX_FIELDS		(NTX_HWCFG_INIT_BIN_SIZE-sizeof(NTXHWCFG_HDR))
 
 typedef struct tagNTX_HWCONFG{
 	NTXHWCFG_HDR m_hdr;
 	NTXHWCFG_VAL m_val;
-	unsigned char m_bReserveA[110-sizeof(NTXHWCFG_HDR)-sizeof(NTXHWCFG_VAL)];
+	unsigned char m_bReserveA[NTX_HWCFG_MAX_FIELDS-sizeof(NTXHWCFG_VAL)];
 } NTX_HWCONFIG;
+
+
 
 // Filed types ...
 #define FIELD_TYPE_IDXSTR	0
@@ -151,6 +164,10 @@ extern const char * gszFMA[];// FM controller .
 extern const char * gszGPSA[];// GPS controller .
 extern const char * gszLightSensorA[];// Light sensor .
 extern const char * gszGPUA[];// GPU .
+extern const char * gszLANA[];// LAN .
+extern const char * gszMobileIFA[];// MobileIF .
+extern const char * gszPIRA[];// PIR motion sensor type .
+extern const char * gszPanelLaminationSrc[];// Panel lamination source .
 
 
 // the return value of hw config apis . >=0 is success ,others is fail .
@@ -239,6 +256,12 @@ extern const char * gszGPUA[];// GPU .
 #define HWCFG_FLDIDX_TPFWIDByte6					60 // v2.6
 #define HWCFG_FLDIDX_TPFWIDByte7					61 // v2.6
 #define HWCFG_FLDIDX_GPU									62 // v2.7
+#define HWCFG_FLDIDX_PCB_Flags2						63 // v2.8
+#define HWCFG_FLDIDX_EPD_Flags						64 // v2.8
+#define HWCFG_FLDIDX_LAN									65 // v2.9
+#define HWCFG_FLDIDX_MOBILEIF							66 // v2.9
+#define HWCFG_FLDIDX_PIR									67 // v2.9
+#define HWCFG_FLDIDX_PANELLAMINATIONSRC		68 // v3.0
 
 
 

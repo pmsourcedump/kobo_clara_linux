@@ -1321,6 +1321,11 @@ static int elan_touch_probe(
 		ELAN_TS_WIDTH=1872;
 		ELAN_TS_HIGHT=1404;
 	}
+	else if(14==gptHWCFG->m_val.bDisplayResolution) {
+		// 1920x1440
+		ELAN_TS_WIDTH=1920;
+		ELAN_TS_HIGHT=1440;
+	}
 	else {
 		// 800x600 
 		ELAN_TS_WIDTH=800;

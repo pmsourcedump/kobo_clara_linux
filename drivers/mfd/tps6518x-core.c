@@ -179,10 +179,10 @@ int tps6518x_chip_power(struct tps6518x *tps6518x,int iIsON,int iIsWakeup,int iI
 	unsigned int dwDummy;
 	int iChk,iRetryCnt;
 	const int iRetryCntMax = 10;
-	unsigned int cur_reg; /* current register value to modify */
-	unsigned int new_reg_val; /* new register value to write */
-	unsigned int fld_mask;	  /* register mask for bitfield to modify */
-	unsigned int fld_val;	  /* new bitfield value to write */
+	//unsigned int cur_reg; /* current register value to modify */
+	//unsigned int new_reg_val; /* new register value to write */
+	//unsigned int fld_mask;	  /* register mask for bitfield to modify */
+	//unsigned int fld_val;	  /* new bitfield value to write */
 
 	//printk("%s(%d,%d,%d)\n",__FUNCTION__,iIsON,iIsWakeup,iIsRailsON);
 
@@ -217,12 +217,13 @@ int tps6518x_chip_power(struct tps6518x *tps6518x,int iIsON,int iIsWakeup,int iI
 				//msleep(4);
 
 				tps6518x->dwSafeTickToCommunication = jiffies+TPS6518X_WAKEUP_WAIT_TICKS;
-
+				/*
 				tps6518x_reg_read(tps6518x,REG_TPS65180_ENABLE,&cur_reg);
 				fld_mask = BITFMASK(STANDBY);
 				fld_val = BITFVAL(STANDBY,false);
 				new_reg_val = to_reg_val(cur_reg, fld_mask, fld_val);
 				tps6518x_reg_write(tps6518x,REG_TPS65180_ENABLE, new_reg_val);
+				*/
 
 				// dummy INT registers .
 				iRetryCnt = 0;
@@ -246,26 +247,30 @@ int tps6518x_chip_power(struct tps6518x *tps6518x,int iIsON,int iIsWakeup,int iI
 				iRet = 2;
 			}
 			else {
-				tps6518x_reg_read(tps6518x,REG_TPS65180_ENABLE,&cur_reg);
+				//tps6518x_reg_read(tps6518x,REG_TPS65180_ENABLE,&cur_reg);
 				iRet = 3;
 			}
 
 
 			if(1==iIsRailsON) {
+				/*
 				fld_mask = BITFMASK(ACTIVE);
 				fld_val = BITFVAL(ACTIVE,true);
 				new_reg_val = to_reg_val(cur_reg, fld_mask, fld_val);
 				tps6518x_reg_write(tps6518x,REG_TPS65180_ENABLE, new_reg_val);
+				*/
 
 				gpio_set_value(tps6518x->gpio_pmic_powerup,1);
 			}
 			else if(0==iIsRailsON){
 				if(1==iRailsCurrentStat) {
 
+					/*
 					fld_mask = BITFMASK(ACTIVE);
 					fld_val = BITFVAL(ACTIVE,false);
 					new_reg_val = to_reg_val(cur_reg, fld_mask, fld_val);
 					tps6518x_reg_write(tps6518x,REG_TPS65180_ENABLE, new_reg_val);
+					*/
 
 					gpio_set_value(tps6518x->gpio_pmic_powerup,0);
 					tps6518x_reg_read(tps6518x,REG_TPS65180_INT1,&dwDummy);
@@ -276,6 +281,7 @@ int tps6518x_chip_power(struct tps6518x *tps6518x,int iIsON,int iIsWakeup,int iI
 
 		}
 		else {
+			/*
 			if(1==iRailsCurrentStat) {
 				tps6518x_reg_read(tps6518x,REG_TPS65180_ENABLE,&cur_reg);
 
@@ -284,9 +290,11 @@ int tps6518x_chip_power(struct tps6518x *tps6518x,int iIsON,int iIsWakeup,int iI
 				new_reg_val = to_reg_val(cur_reg, fld_mask, fld_val);
 				tps6518x_reg_write(tps6518x,REG_TPS65180_ENABLE, new_reg_val);
 			}
+			*/
 			gpio_set_value(tps6518x->gpio_pmic_powerup,0);
 
 
+			/*
 			if(1==iWakeupCurrentStat) {
 				tps6518x_reg_read(tps6518x,REG_TPS65180_INT1,&dwDummy);
 				tps6518x_reg_read(tps6518x,REG_TPS65180_INT2,&dwDummy);
@@ -297,6 +305,8 @@ int tps6518x_chip_power(struct tps6518x *tps6518x,int iIsON,int iIsWakeup,int iI
 				new_reg_val = to_reg_val(cur_reg, fld_mask, fld_val);
 				tps6518x_reg_write(tps6518x,REG_TPS65180_ENABLE, new_reg_val);
 			}
+			*/
+
 			gpio_set_value(tps6518x->gpio_pmic_wakeup,0);
 
 			tps6518x->timing_need_restore = 1;//need restore regs .
@@ -306,6 +316,7 @@ int tps6518x_chip_power(struct tps6518x *tps6518x,int iIsON,int iIsWakeup,int iI
 		}
 	}
 	else {
+		/*
 		if(1==iWakeupCurrentStat) {
 			tps6518x_reg_read(tps6518x,REG_TPS65180_ENABLE,&cur_reg);
 
@@ -314,6 +325,7 @@ int tps6518x_chip_power(struct tps6518x *tps6518x,int iIsON,int iIsWakeup,int iI
 			new_reg_val = to_reg_val(cur_reg, fld_mask, fld_val);
 			tps6518x_reg_write(tps6518x,REG_TPS65180_ENABLE, new_reg_val);
 		}
+		*/
 		gpio_set_value(tps6518x->gpio_pmic_powerup,0);
 
 		
@@ -322,10 +334,12 @@ int tps6518x_chip_power(struct tps6518x *tps6518x,int iIsON,int iIsWakeup,int iI
 			tps6518x_reg_read(tps6518x,REG_TPS65180_INT2,&dwDummy);
 
 
+			/*
 			fld_mask = BITFMASK(STANDBY);
 			fld_val = BITFVAL(STANDBY,true);
 			new_reg_val = to_reg_val(cur_reg, fld_mask, fld_val);
 			tps6518x_reg_write(tps6518x,REG_TPS65180_ENABLE, new_reg_val);
+			*/
 		}
 		gpio_set_value(tps6518x->gpio_pmic_wakeup,0);
 		tps6518x->timing_need_restore = 1;//need restore regs .

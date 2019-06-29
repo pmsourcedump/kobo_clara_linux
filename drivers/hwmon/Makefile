@@ -111,6 +111,7 @@ obj-$(CONFIG_SENSORS_MAX1619)	+= max1619.o
 obj-$(CONFIG_SENSORS_MAX1668)	+= max1668.o
 obj-$(CONFIG_SENSORS_MAX17135)  += max17135-hwmon.o
 obj-$(CONFIG_SENSORS_TPS6518X)  += tps6518x-hwmon.o
+obj-$(CONFIG_SENSORS_SY7636)  += sy7636-hwmon.o
 obj-$(CONFIG_SENSORS_FP9928)    += fp9928-hwmon.o
 obj-$(CONFIG_SENSORS_MAX197)	+= max197.o
 obj-$(CONFIG_SENSORS_MAX6639)	+= max6639.o
@@ -160,7 +161,7 @@ obj-$(CONFIG_SENSORS_W83L786NG)	+= w83l786ng.o
 obj-$(CONFIG_SENSORS_WM831X)	+= wm831x-hwmon.o
 obj-$(CONFIG_SENSORS_WM8350)	+= wm8350-hwmon.o
 obj-$(CONFIG_SENSORS_MAG3110)   += mag3110.o
-obj-$(CONFIG_MXC_MMA8451)       += mxc_mma8451.o
+obj-$(CONFIG_SENSORS_MMA8X5X)       += mma8x5x.o
 
 obj-$(CONFIG_PMBUS)		+= pmbus/
 

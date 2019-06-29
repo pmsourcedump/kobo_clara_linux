@@ -1606,9 +1606,15 @@ static void sdhci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	sdhci_runtime_pm_put(host);
 }
 
+extern struct sdhci_host *wifi_mmc_host;
+extern int wifi_pwr_status;
 static int sdhci_do_get_cd(struct sdhci_host *host)
 {
 	int gpio_cd = mmc_gpio_get_cd(host->mmc);
+
+	if (wifi_mmc_host == host) {
+		return wifi_pwr_status;
+	}
 
 	if (host->flags & SDHCI_DEVICE_DEAD)
 		return 0;

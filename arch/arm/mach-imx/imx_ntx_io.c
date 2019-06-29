@@ -160,6 +160,7 @@ struct ebook_device_info {
 static int Driver_Count = -1;
 static int gKeepPowerAlive;
 int g_wakeup_by_alarm;
+static unsigned int g_initialize = 0;
 
 static int _Percent_to_NtxBattADC(int iPercent)
 {
@@ -294,9 +295,14 @@ void ntx_wifi_power_ctrl (int isWifiEnable)
 	struct platform_device *pdev;
 	struct gpio_desc *wifi_power, *wifi_rst, *wifi_int;
 
+    if (isWifiEnable && g_initialize) {
+       printk("%s() : ntx_wifi_power_ctrl return \n",__FUNCTION__);
+       goto end;
+    }
+	printk("%s g_initialize = %d\n" ,__func__, g_initialize);
 	printk("%s(%d) called\n",__func__,isWifiEnable);
 
-	np = of_find_node_by_path("/regulators/wifi_regulator");
+    np = of_find_node_by_path("/regulators/wifi_regulator");
 
 	if(np)
 	{
@@ -332,6 +338,9 @@ void ntx_wifi_power_ctrl (int isWifiEnable)
 					gpiod_direction_input(wifi_int);
 					gpiod_put(wifi_int);
 				}
+
+				g_initialize = isWifiEnable;
+
 				wifi_card_detect(isWifiEnable);
 			}
 		}
@@ -344,7 +353,13 @@ void ntx_wifi_power_ctrl (int isWifiEnable)
 	else {
 		printk(KERN_ERR"%s(): device node not found !!\n",__FUNCTION__);
 	}
-
+    goto finish;
+end:
+      if (isWifiEnable && g_initialize) {
+          printk("%s() : do nothing \n",__FUNCTION__);
+      }
+finish:
+    printk("%s() : done \n",__FUNCTION__);
 }
 EXPORT_SYMBOL(ntx_wifi_power_ctrl);
 
@@ -691,6 +706,10 @@ void ricoh_suspend_state_sync(void)
 		sus_current = 5200;
 		hiber_current = 800;
 		break;
+	case 74://E60K00
+		sus_current = 3030;	// 3.03mA
+		hiber_current = 657;	// 0.657mA
+		break;
 	}
 	bat_alert_req_flg = 0;	// 0:Normal, 1:Re-synchronize request from system
 }
@@ -979,7 +998,7 @@ static long  ioctlDriver(struct file *filp, unsigned int command, unsigned long 
 		case CM_3G_RESET:
 			break;	
 					
-		case CM_WIFI_CTRL:		
+        case CM_WIFI_CTRL:
 			ntx_wifi_power_ctrl (p);
 			break;	
 					

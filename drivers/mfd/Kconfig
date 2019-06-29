@@ -439,6 +439,13 @@ config MFD_TPS6518X
       This is the TPS6518X PMIC support. It includes
       core support for communication with the TPS6518X chip.
 
+config MFD_SY7636
+    tristate "Silergy SY7636 EPD PMIC core"
+        depends on I2C
+    help
+      This is the TPS6518X PMIC support. It includes
+      core support for communication with the SY7636 chip.
+
 config MFD_FP9928
     tristate "Fiti power FP9928 EPD PMIC core"
         depends on I2C

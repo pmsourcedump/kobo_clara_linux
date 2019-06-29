@@ -512,10 +512,18 @@ static int Battery_Table(void)
 		BatteryTableFlageDef=1;
 		break;
 	case 10: //1200mAh
-		BatteryTableFlageDef=2;
+		if(NTXHWCFG_TST_FLAG(gptHWCFG->m_val.bEPD_Flags,1)) {
+			BatteryTableFlageDef=4;
+		}
+		else {
+			BatteryTableFlageDef=2;
+		}
 		break;
 	case 12: //SP284657-1000mA
 		BatteryTableFlageDef=3;
+		break;
+	case 14: //PR-284983N-1500mA
+		BatteryTableFlageDef=5;
 		break;
 	default:
 		BatteryTableFlageDef=0;
@@ -1561,13 +1569,44 @@ static int getCapFromOriTable_U10per(struct ricoh61x_battery_info *info, int vol
 							3776061,
 							3778194,
 							3780219};
+	int ocv_table_for_1200mAh_coff36[11] = {	3602154,
+ 							3640621,
+ 							3670068,
+ 							3680034,
+ 							3683734,
+ 							3685768,
+ 							3689288,
+ 							3692088,
+ 							3695388,
+ 							3698221,
+ 							3701000};
+	int ocv_table_for_1500mAh[11] = {	
+							3591000,
+							3600600,
+							3610200,
+							3619800,
+							3629400,
+							3639000,
+							3648600,
+							3658200,
+							3667800,
+ 							3677400,
+							3687000};
 
 
 	int *ocv_table;
 
 	if(10 == gptHWCFG->m_val.bBattery) {// 1200mAh battery
-		ocv_table = ocv_table_for_1200mAh;
+		if(NTXHWCFG_TST_FLAG(gptHWCFG->m_val.bEPD_Flags,1)) {
+			// cut off @ 3.6V for LPTFT .
+			ocv_table = ocv_table_for_1200mAh_coff36;
+		}
+		else {
+			ocv_table = ocv_table_for_1200mAh;
+		}
 	}
+	else if (14 == gptHWCFG->m_val.bBattery)		// PR-284983N 1500mAH
+			ocv_table = ocv_table_for_1500mAh;
 	else {
 		ocv_table = ocv_table_regular;
 	}
@@ -1766,12 +1805,30 @@ static int calc_soc_by_voltageMethod(struct ricoh61x_battery_info *info)
 
 
 	if(10 == gptHWCFG->m_val.bBattery) {// 1200mAh battery
-		if(info->soca->Vbat_ave > 4100000) {
-			soc = 10000;
-		} else if(info->soca->Vbat_ave < 3750000) {
-			soc = 0;
-		} else {
-			soc = 10000 - ((4100000 - info->soca->Vbat_ave) / 35);
+		if (NTXHWCFG_TST_FLAG(gptHWCFG->m_val.bEPD_Flags,1)) {	// 1200mA for lp-tft
+			if(info->soca->Vbat_ave > 4100000) {
+				soc = 10000;
+			} else if(info->soca->Vbat_ave < 3650000) {
+				soc = 0;
+			} else {
+				int i;
+				for (i = 0; i < 10; i++) {
+					if (info->soca->ocv_table[i] <= info->soca->Vbat_ave && info->soca->ocv_table[i+1] > info->soca->Vbat_ave) {
+						soc = 1000*i + ((info->soca->Vbat_ave - info->soca->ocv_table[i])*1000) / 
+								(info->soca->ocv_table[i+1] - info->soca->ocv_table[i]);
+						break;
+					}
+				}
+			}		
+		}
+		else {
+			if(info->soca->Vbat_ave > 4100000) {
+				soc = 10000;
+			} else if(info->soca->Vbat_ave < 3750000) {
+				soc = 0;
+			} else {
+				soc = 10000 - ((4100000 - info->soca->Vbat_ave) / 35);
+			}
 		}
 	}
 	else {

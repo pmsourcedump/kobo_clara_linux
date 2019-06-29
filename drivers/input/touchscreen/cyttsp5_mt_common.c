@@ -325,6 +325,8 @@ cyttsp5_get_mt_touches_pr_tch:
 	md->num_prv_rec = num_cur_tch;
 }
 
+extern int giSuspendingState;
+unsigned long glEventReportTick;
 /* read xy_data for all current touches */
 static int cyttsp5_xy_worker(struct cyttsp5_mt_data *md)
 {
@@ -360,6 +362,9 @@ static int cyttsp5_xy_worker(struct cyttsp5_mt_data *md)
 		cyttsp5_get_mt_touches(md, &tch, num_cur_tch);
 	else
 		cyttsp5_mt_lift_all(md);
+	if (giSuspendingState) {
+		glEventReportTick = jiffies;
+	}
 
 	rc = 0;
 
@@ -776,8 +781,10 @@ int cyttsp5_mt_release(struct device *dev)
 int cyttsp5_mt_check_busy (void)
 {
 	// Do not enter suspend if touch pressed or event not reported.
-	if (g_touch_status)
+	if (g_touch_status || (glEventReportTick && time_after ((glEventReportTick+50),jiffies))) {
+		printk ("[%s-%d] report event when suspending...\n", __func__, __LINE__);
 		return -EBUSY;
+	}
 	else 
 		return 0;
 }

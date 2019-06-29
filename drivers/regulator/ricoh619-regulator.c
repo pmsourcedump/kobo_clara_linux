@@ -819,7 +819,8 @@ static int ricoh61x_regulator_suspend(struct device *dev)
 			}
 		}
 	}
-	if (gSleep_Mode_Suspend) {
+	if (gSleep_Mode_Suspend) 
+	{
 		if (5==gptHWCFG->m_val.bRamType)  	// LPDDR2
 			ricoh61x_write(to_ricoh61x_dev(rdev), 0x4A, 0x22);	// set core3_3v3 & DDR_0V6 eco mode.
 		else

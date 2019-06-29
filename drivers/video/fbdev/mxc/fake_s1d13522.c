@@ -2560,6 +2560,21 @@ int fake_s1d13522_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 				break;
 			}
 		}	
+		else if(14==gptHWCFG->m_val.bDisplayResolution) {
+			switch(gtRotate)
+			{
+			case epdfb_rotate_0:
+			case epdfb_rotate_180:
+				var->xres = 1920;
+				var->yres = 1440;
+				break;	
+			case epdfb_rotate_90:
+			case epdfb_rotate_270:
+				var->xres = 1440;
+				var->yres = 1920;
+				break;
+			}
+		}	
 		else {
 			switch(gtRotate)
 			{
@@ -2739,6 +2754,9 @@ int32_t fake_s1d13522_ioctl(unsigned int cmd,unsigned long arg,EPDFB_DC *pDC)
 						break;
 					case 8:// 1872x1404
 						dwImgStructSize=((sizeof(unsigned int)*6)+(1872*1404));
+						break;
+					case 14:// 1920x1440
+						dwImgStructSize=((sizeof(unsigned int)*6)+(1920*1440));
 						break;
 					default :
 						dwImgStructSize=sizeof(ST_IMAGE_PGM);
@@ -2993,6 +3011,25 @@ int32_t fake_s1d13522_ioctl(unsigned int cmd,unsigned long arg,EPDFB_DC *pDC)
 			}
 		}
 		break;
+		case EPDC_MX5_SENDUPD:GALLEN_DBGLOCAL_RUNLOG(24);
+		{
+			if(!pDC->pfnSendEPDUpd) {
+				ret = -ENOTTY;
+			}
+			else {
+				struct mxcfb_mx5_update_data upd_data;
+				if (!copy_from_user(&upd_data, arg,sizeof(upd_data))) {
+					ret = pDC->pfnSendEPDUpd(&upd_data);
+					if (ret == 0 && copy_to_user(arg, &upd_data,sizeof(upd_data))) {
+						ret = -EFAULT;
+					}
+				}
+				else {
+					ret = -ENOTTY;
+				}
+			}
+		}
+		break;
 
 		default :
 			ERR_MSG("[fake_21d13522] %s() : unsupported cmd (0x%x)\n",__FUNCTION__,cmd);
@@ -3007,7 +3044,7 @@ int32_t fake_s1d13522_ioctl(unsigned int cmd,unsigned long arg,EPDFB_DC *pDC)
 
 int fb_capture_ex(EPDFB_DC *pDC,int iSrcImgX,int iSrcImgY,int iSrcImgW,int iSrcImgH,
 		int iBitsTo,EPDFB_ROTATE_T I_tRotateDegree,char *pszFileName,
-		unsigned long I_dwCapTotal,int iUpdMode,int iIsFullUpd)
+		unsigned long I_dwCapTotal,int iUpdMode,int iIsFullUpd,char *pszExtraInfo)
 {
 	EPDFB_DC *ptDC_Capture;
 	char cfnbufA[256];
@@ -3017,9 +3054,11 @@ int fb_capture_ex(EPDFB_DC *pDC,int iSrcImgX,int iSrcImgY,int iSrcImgW,int iSrcI
 	static unsigned long gdwCaptureCnt=0;
 	const unsigned long dwCaptureTotals=I_dwCapTotal;
 	int iCaptureIDX;
+	char *L_pszExtraInfo = pszExtraInfo?pszExtraInfo:"";
 
 
 	ASSERT(pDC);
+
 
 
 	if(0==pszFileName) {
@@ -3064,9 +3103,9 @@ int fb_capture_ex(EPDFB_DC *pDC,int iSrcImgX,int iSrcImgY,int iSrcImgW,int iSrcI
 	else {
 		cUpdModeBufA[0]='\0';
 	}
-	sprintf(cfnbufA,"%s_%ux%u-%d_%dx-%dy-%dx%d%s.raw%d",
+	sprintf(cfnbufA,"%s_%ux%u-%d_%dx-%dy-%dx%d%s-%s.raw%d",
 			pszFileName,pDC->dwWidth,pDC->dwHeight,iCaptureIDX,
-			_x,_y,_w,_h,cUpdModeBufA,iBitsTo);
+			_x,_y,_w,_h,cUpdModeBufA,L_pszExtraInfo,iBitsTo);
 
 	printk("write raw img %d/%d -> \"%s\" ,%d bits,%u bytes,w=%u,h=%u\n",
 			iCaptureIDX,dwCaptureTotals,cfnbufA,iBitsTo,ptDC_Capture->dwDCSize,_w,_h);
@@ -3205,7 +3244,7 @@ static VOID PROGRESS_BAR(EPDFB_DC *pDC)
 void fb_capture(EPDFB_DC *pDC,int iBitsTo,EPDFB_ROTATE_T I_tRotateDegree,char *pszFileName)
 {
 	fb_capture_ex(pDC,0,0,pDC->dwWidth,pDC->dwHeight,
-			iBitsTo,I_tRotateDegree,pszFileName,1,-1,-1);
+			iBitsTo,I_tRotateDegree,pszFileName,1,-1,-1,0);
 }
 #endif //] SHOW_PROGRESS_BAR
 

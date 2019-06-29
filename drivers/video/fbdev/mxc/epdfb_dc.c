@@ -1570,6 +1570,284 @@ EPDFB_DC_RET epdfbdc_set_pixel(EPDFB_DC *I_pEPD_dc,\
 	return tRet;
 }
 
+#if 1 //[
+
+//
+// TODO: replace this with something independent of inc_*
+//
+static void FB_vline(EPDFB_DC *I_pEPD_dc,int x, int sy, int ey, unsigned char color,unsigned short wLineWidth)
+{
+	int i;
+	unsigned short w,l;
+
+	/* Parameter sanity checks */
+	if(x < 0) {
+		x=0;
+	}
+	if( x > (I_pEPD_dc->dwWidth+I_pEPD_dc->dwFBWExtra)) {
+		x=I_pEPD_dc->dwWidth+I_pEPD_dc->dwFBWExtra;
+	}
+	
+	
+	if(sy > ey)
+	{
+		i=sy;
+		sy=ey;
+		ey=i;
+	}
+
+	if(sy < 0)
+		sy = 0;
+
+	if(ey > (I_pEPD_dc->dwHeight+I_pEPD_dc->dwFBHExtra)) {
+		ey = I_pEPD_dc->dwHeight+I_pEPD_dc->dwFBHExtra;
+	}
+	/* end of checks */
+
+	for(i = sy; i <= ey; i++)
+	{
+		for(l=0;l<wLineWidth;l++) {
+			for(w=0;w<wLineWidth;w++) {
+				_epdfbdc_set_pixel(I_pEPD_dc,x+w,i+l,color,4);
+			}
+		}
+	}
+	return;
+}
+
+//
+// TODO: replace this with something independent of inc_*
+//
+static void FB_hline(EPDFB_DC *I_pEPD_dc,int sx, int ex, int y, unsigned char color,unsigned short wLineWidth)
+{
+	int i;
+	unsigned short w,l;
+	
+	if(y < 0) {
+		y=0;
+	}
+	if( y > (I_pEPD_dc->dwHeight+I_pEPD_dc->dwFBHExtra)) {
+		y=I_pEPD_dc->dwHeight+I_pEPD_dc->dwFBHExtra;
+	}
+	
+	if(sx > ex)
+	{
+		i=sx;
+		sx=ex;
+		ex=i;
+	}
+
+	if(sx < 0)
+		sx = 0;
+		
+	if(ex > (I_pEPD_dc->dwWidth+I_pEPD_dc->dwFBWExtra)) {
+		ex = I_pEPD_dc->dwWidth+I_pEPD_dc->dwFBWExtra;
+	}
+	
+	for(i = sx; i <= ex; i++)
+	{
+		for(l=0;l<wLineWidth;l++) {
+			for(w=0;w<wLineWidth;w++) {
+				_epdfbdc_set_pixel(I_pEPD_dc,i+l,y+w,color,4);
+			}
+		}
+	}
+	return;
+}
+
+//
+// TODO: replace this with something independent of inc_*
+//
+/* This is Bresenham's line algorithm */
+static void FB_line(EPDFB_DC *I_pEPD_dc,int sx, int sy, int ex, int ey, unsigned char color,unsigned short wLineWidth)
+{
+	int dx,dy;
+	int x,y,incx,incy;
+	int balance;
+	unsigned short w,l;
+	
+	if(sx == ex)
+		FB_vline(I_pEPD_dc,sx,sy,ey,color,wLineWidth);
+	if(sy == ey)
+		FB_hline(I_pEPD_dc,sx,ex,sy,color,wLineWidth);
+	
+	if (ex >= sx)
+	{
+		dx = ex - sx;
+		incx = 1;
+	}
+	else
+	{
+		dx = sx - ex;
+		incx = -1;
+	}
+
+	if (ey >= sy)
+	{
+		dy = ey - sy;
+		incy = 1;
+	}
+	else
+	{
+		dy = sy - ey;
+		incy = -1;
+	}
+
+	x = sx;
+	y = sy;
+
+	if (dx >= dy)
+	{
+		dy <<= 1;
+		balance = dy - dx;
+		dx <<= 1;
+
+		while (x != ex)
+		{
+			for(l=0;l<wLineWidth;l++) {
+				for(w=0;w<wLineWidth;w++) {
+					_epdfbdc_set_pixel(I_pEPD_dc,x+l,y+w,color,4);
+				}
+			}
+			if (balance >= 0)
+			{
+				y += incy;
+				balance -= dx;
+			}
+			balance += dy;
+			x += incx;
+		} 
+		for(l=0;l<wLineWidth;l++) {
+			for(w=0;w<wLineWidth;w++) {
+				_epdfbdc_set_pixel(I_pEPD_dc,x+l,y+w,color,4);
+			}
+		}
+	}
+	else
+	{
+		dx <<= 1;
+		balance = dx - dy;
+		dy <<= 1;
+
+		while (y != ey)
+		{
+			for(l=0;l<wLineWidth;l++) {
+				for(w=0;w<wLineWidth;w++) {
+					_epdfbdc_set_pixel(I_pEPD_dc,x+l,y+w,color,4);
+				}
+			}
+			if (balance >= 0)
+			{
+				x += incx;
+				balance -= dy;
+			}
+			balance += dx;
+			y += incy;
+		} 
+		for(l=0;l<wLineWidth;l++) {
+			for(w=0;w<wLineWidth;w++) {
+				_epdfbdc_set_pixel(I_pEPD_dc,x+l,y+w,color,4);
+			}
+		}
+	}
+
+	return;
+}
+
+EPDFB_DC_RET epdfbdc_draw_line(EPDFB_DC *I_pEPD_dc,\
+	unsigned long I_dwX1,unsigned long I_dwY1,\
+	unsigned long I_dwX2,unsigned long I_dwY2,\
+	unsigned char I_bLineColor,unsigned short I_wLineWidth)
+{
+	FB_line(I_pEPD_dc,(int)I_dwX1, (int)I_dwY1, 
+	(int)I_dwX2, (int)I_dwY2,(unsigned char)I_bLineColor,I_wLineWidth);
+	return EPDFB_DC_SUCCESS;
+}
+
+#else //][!
+
+static void _Swap ( unsigned long *a , unsigned *b )  
+{ 
+	unsigned long tmp ; 
+	tmp = *a ; 
+	*a = *b ; 
+	*b = tmp; 
+}
+
+EPDFB_DC_RET epdfbdc_draw_line(EPDFB_DC *I_pEPD_dc,\
+	unsigned long I_dwX1,unsigned long I_dwY1,\
+	unsigned long I_dwX2,unsigned long I_dwY2,\
+	unsigned char I_bLineColor,unsigned short I_wLineWidth)
+{
+	unsigned long dx , dy ; 
+	unsigned long tx , ty ; 
+	unsigned long inc1 , inc2 ; 
+	unsigned long d ; 
+	unsigned long x , y ; 
+	unsigned long xx,yy;
+	int iTag;
+	
+	unsigned long x1=I_dwX1;
+	unsigned long y1=I_dwY1;
+	unsigned long x2=I_dwX2;
+	unsigned long y2=I_dwY2;
+	unsigned long c=(unsigned long)I_bLineColor;
+	
+	
+	for(xx=0;xx<(unsigned long)I_wLineWidth;x++) {
+		for(yy=0;yy<(unsigned long)I_wLineWidth;y++) {
+			_epdfbdc_set_pixel(I_pEPD_dc,x1+xx,y1+yy,c,4);
+		}
+	}
+	if ( x1 == x2 && y1 == y2 ) { /*如果两点重合，结束后面的动作。*/ 
+		return EPDFB_DC_SUCCESS ; 
+	}
+	iTag = 0 ; 
+	dx = abs ( x2 - x1 ); 
+	dy = abs ( y2 - y1 ); 
+	if ( dx < dy )   /*如果dy为计长方向，则交换纵横坐标。*/ 
+	{ 
+		iTag = 1 ; 
+		_Swap ( & x1 , & y1 ); 
+		_Swap ( & x2 , & y2 ); 
+		_Swap ( & dx , & dy ); 
+	} 
+	tx = ( x2 - x1 ) > 0 ? 1 : -1 ;    /*确定是增1还是减1*/ 
+	ty = ( y2 - y1 ) > 0 ? 1 : -1 ; 
+	x = x1 ; 
+	y = y1 ; 
+	inc1 = 2 * dy ; 
+	inc2 = 2 * ( dy - dx ); 
+	d = inc1 - dx ; 
+	while ( x != x2 )     /*循环画点*/ 
+	{ 
+		if ( d < 0 ) {
+			d += inc1 ; 
+		}
+		else 
+		{ 
+			y += ty ; 
+			d += inc2 ; 
+		} 
+		if ( iTag )  {
+			for(xx=0;xx<(unsigned long)I_wLineWidth;x++) {
+				for(yy=0;yy<(unsigned long)I_wLineWidth;y++) {
+					_epdfbdc_set_pixel(I_pEPD_dc,y+xx,x+yy,c,4);
+				}
+			}
+		}
+		else {
+			for(xx=0;xx<(unsigned long)I_wLineWidth;x++) {
+				for(yy=0;yy<(unsigned long)I_wLineWidth;y++) {
+					_epdfbdc_set_pixel(I_pEPD_dc,x+xx,y+yy,c,4);
+				}
+			}
+		}
+		x += tx ; 
+	} 
+	return EPDFB_DC_SUCCESS;
+}
+#endif //]
 EPDFB_DC_RET epdfbdc_dcbuf_to_RGB565(EPDFB_DC *I_pEPD_dc,\
 	unsigned char *O_pbRGB565Buf,unsigned long I_dwRGB565BufSize)
 {

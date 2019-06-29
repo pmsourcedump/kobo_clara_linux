@@ -2,28 +2,39 @@
 #include "imx6sll-e60k02-base.dts"
 
 &i2c2 {
-	tps6518x@68 {
-		compatible = "ti,tps6518x";
-		reg = <0x68>;
+	sy7636@62 {
+		compatible = "Silergy,sy7636";
+		reg = <0x62>;
 		/*
-		 * power sequencing for TPS65180/65181
+		 * power on delay for SY7636
+		 * 0x0 : 0ms
+		 * 0x1 : 1ms
+		 * 0x2 : 2ms
+		 * 0x3 : 4ms
+		 * chip default is 2ms .
 		 */
-		pwr_seq0 = <0xe1>; /* [Vddh-seq=3 | Vpos-seq=2 | Vee-seq=0 | Vneg-seq=1] */
-		pwr_seq1 = <0x30>; /* [Vneg-dly1=3 |Vee-dly0=0]  mSec */
-		pwr_seq2 = <0x33>; /* [Vddh-dly3=3 | Vpos-dly2=3] mSec */
-		/*
-		 * power sequencing for TPS65185/65186
-		 */
-		upseq0 = <0xe1>;
-		upseq1 = <0x00>;
-		dwnseq0 = <0x1e>;
-		dwnseq1 = <0xe0>;
+		on_delay1 = <0x2>;
+		on_delay2 = <0x2>;
+		on_delay3 = <0x2>;
+		on_delay4 = <0x2>;
 
+
+		/*
+		 * VLDO Voltage Adjustment Control 
+		 * 0x0 = reserved
+		 * 0x1 = +/-18V
+		 * 0x2 = +/-15.25V
+		 * 0x3 = +/-15V (default)
+		 * 0x4 = +/-14.75V
+		 * 0x5 = +/-14.5V
+		 * 0x6 = +/-14.25V
+		 * 0x7 = reserved
+		VLDO = <0x2>;
+		 */
+		
 		gpio_pmic_pwrgood = <&gpio2 13 0>;
 		gpio_pmic_vcom_ctrl = <&gpio2 3 GPIO_ACTIVE_HIGH>;
-		gpio_pmic_wakeup = <&gpio2 7 0>;
 		gpio_pmic_powerup = <&gpio2 8 GPIO_ACTIVE_HIGH>;
-		gpio_pmic_intr = <&gpio2 9 0>;
 
 		/* gpio_pmic_v3p3 = <&gpio2 14 GPIO_ACTIVE_HIGH>; */
 		gpio_pmic_pwrall = <&gpio2 14 GPIO_ACTIVE_HIGH>;

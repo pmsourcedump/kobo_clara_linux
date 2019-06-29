@@ -190,4 +190,5 @@ obj-$(CONFIG_MFD_MT6397)	+= mt6397-core.o
 obj-$(CONFIG_MFD_RICOH619)	+= ricoh619.o ricoh619-irq.o
 obj-$(CONFIG_MFD_FP9928)	+= fp9928.o
 obj-$(CONFIG_MFD_TPS6518X)      += tps6518x-core.o
+obj-$(CONFIG_MFD_SY7636)      += sy7636-core.o
 

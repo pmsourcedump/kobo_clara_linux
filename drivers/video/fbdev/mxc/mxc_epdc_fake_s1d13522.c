@@ -15,6 +15,7 @@
 
 #define TPS65185_ENABLED		1
 #define FP9928_ENABLED			1
+#define SY7636_ENABLED		1
 
 #ifdef TPS65185_ENABLED//[
 	#include <linux/mfd/tps6518x.h>
@@ -24,6 +25,9 @@
 	#include <linux/mfd/fp9928.h>
 #endif //]FP9928_ENABLED
 
+#ifdef SY7636_ENABLED//[
+	#include <linux/mfd/sy7636.h>
+#endif //]SY7636_ENABLED
 
 
 #define SYSFS_DBG		1
@@ -82,6 +86,7 @@ static int giDither_enable;
 
 static int mxc_epdc_fb_set_temperature(int temperature, struct fb_info *info);
 static int mxc_epdc_fb_send_update(struct mxcfb_update_data *upd_data,struct fb_info *info);
+static int mxc_epdc_fb_send_single_update(struct mxcfb_update_data *upd_data,struct fb_info *info);
 static int mxc_epdc_fb_wait_update_complete(struct mxcfb_update_marker_data *marker_data,
 						struct fb_info *info);
 static int mxc_epdc_fb_set_upd_scheme(u32 upd_scheme, struct fb_info *info);
@@ -217,6 +222,48 @@ static struct tps6518x *_get_tps6518x(void)
 }
 #endif //]TPS65185_ENABLED
 
+#ifdef SY7636_ENABLED//[
+//const char *mx6sll_sy7636_node_name="/soc/aips-bus@02100000/i2c@021a4000/sy7636@68";
+const char *mx6sll_sy7636_node_name="/soc/aips-bus@02100000/i2c@021a4000/sy7636@62";
+static struct sy7636 *_get_sy7636(void)
+{
+	struct i2c_client *sy7636_i2c_client;			
+	struct sy7636 *sy7636 = 0;
+	struct device_node *np;
+	const char *node_name = mx6sll_sy7636_node_name;
+
+	if(!gptHWCFG) {
+		printk(KERN_ERR"%s():ntx hwconfig not exist !!!!",__FUNCTION__);
+		return 0;
+	}
+
+	if(10==gptHWCFG->m_val.bCPU) {
+		// MX6SLL
+		node_name = mx6sll_sy7636_node_name;
+	}
+	else {
+		node_name = mx6sll_sy7636_node_name;
+		printk(KERN_ERR"%s():CPU type (%d) cannot be recognized !",
+				__FUNCTION__,gptHWCFG->m_val.bCPU);
+		return 0;
+	}
+
+	np = of_find_node_by_path(node_name);
+	if(np) 
+	{
+		sy7636_i2c_client = of_find_i2c_device_by_node(np);
+		sy7636 = i2c_get_clientdata(sy7636_i2c_client);
+
+		of_node_put(np);
+	}
+	else {
+		ERR_MSG("%s():\"%s\" device node not found !!\n",__FUNCTION__,node_name);
+	}
+	return sy7636;
+}
+#endif //]SY7636_ENABLED
+
+
 #ifdef FP9928_ENABLED//[
 const char *mx6ull_fp9928_node_name="/soc/aips-bus@02100000/i2c@021a0000/fp9928@48";
 const char *mx6sll_fp9928_node_name="/soc/aips-bus@02100000/i2c@021a4000/fp9928@48";
@@ -292,7 +339,7 @@ static ssize_t vcom_read(struct device *dev, struct device_attribute *attr,char 
 	int iChk=-1;
 
 	if(8==gptHWCFG->m_val.bDisplayCtrl || 12==gptHWCFG->m_val.bDisplayCtrl ||
-				13==gptHWCFG->m_val.bDisplayCtrl) 
+				13==gptHWCFG->m_val.bDisplayCtrl || 18==gptHWCFG->m_val.bDisplayCtrl) 
 	{
 #ifdef FP9928_ENABLED //[
 		struct fp9928 *fp9928 = _get_fp9928();	
@@ -316,6 +363,18 @@ static ssize_t vcom_read(struct device *dev, struct device_attribute *attr,char 
 		}
 #endif //]TPS65185_ENABLED
 	}
+	else if(19==gptHWCFG->m_val.bDisplayCtrl||20==gptHWCFG->m_val.bDisplayCtrl||
+				21==gptHWCFG->m_val.bDisplayCtrl||22==gptHWCFG->m_val.bDisplayCtrl)
+	{
+#ifdef SY7636_ENABLED //[
+		// 
+		struct sy7636 *sy7636 = _get_sy7636();	
+		iChk = sy7636_get_vcom(sy7636,&iVCOM_mV);
+		if(iChk>=0) {
+			sprintf (buf,"%dmV\n",iVCOM_mV);
+		}
+#endif //]SY7636_ENABLED
+	}
 	else {
 	}
 	return strlen(buf);
@@ -332,7 +391,7 @@ static ssize_t vcom_write(struct device *dev, struct device_attribute *attr,
 
 	if(iVCOM_mV<0) {
 		if(8==gptHWCFG->m_val.bDisplayCtrl || 12==gptHWCFG->m_val.bDisplayCtrl ||
-				13==gptHWCFG->m_val.bDisplayCtrl) 
+				13==gptHWCFG->m_val.bDisplayCtrl || 18==gptHWCFG->m_val.bDisplayCtrl) 
 		{
 #ifdef FP9928_ENABLED//[
 			struct fp9928 *fp9928 = _get_fp9928();	
@@ -355,6 +414,18 @@ static ssize_t vcom_write(struct device *dev, struct device_attribute *attr,
 				printk(KERN_ERR"TPS65185 VCOM %dmV write failed !\n",iVCOM_mV);
 			}
 #endif //]TPS65185_ENABLED
+		}
+		else if(19==gptHWCFG->m_val.bDisplayCtrl||20==gptHWCFG->m_val.bDisplayCtrl||
+					21==gptHWCFG->m_val.bDisplayCtrl||22==gptHWCFG->m_val.bDisplayCtrl)
+		{
+#ifdef SY7636_ENABLED //[
+			// 
+			struct sy7636 *sy7636 = _get_sy7636();	
+			iChk = sy7636_set_vcom(sy7636,iVCOM_mV,0);
+			if(iChk>=0) {
+				printk(KERN_ERR"SY7636 VCOM %dmV write failed !\n",iVCOM_mV);
+			}
+#endif //]SY7636_ENABLED
 		}
 		else {
 		}
@@ -560,7 +631,24 @@ static ssize_t waveform_mode_read(struct device *dev, struct device_attribute *a
 static ssize_t waveform_mode_write(struct device *dev, struct device_attribute *attr,
 		       const char *buf, size_t count)
 {
-	DBG_MSG("%s() not supported!\n",__FUNCTION__);
+	int iWaveform_mode=-1,iWaveform_mode_eink=-1;
+
+	sscanf (buf,"%d:%d\n",&iWaveform_mode,&iWaveform_mode_eink);
+
+	switch (iWaveform_mode) {
+	case NTX_WFM_MODE_DU:
+	case NTX_WFM_MODE_A2:
+	case NTX_WFM_MODE_GC16:
+	case NTX_WFM_MODE_GL16:
+	case NTX_WFM_MODE_GLR16:
+	case NTX_WFM_MODE_GLD16:
+		giNTX_waveform_modeA[iWaveform_mode] = iWaveform_mode_eink;
+		break;
+	default:
+		ERR_MSG("%s():parameter error !\n",__FUNCTION__);
+		break;
+	}
+
 	return count;
 }
 
@@ -903,7 +991,7 @@ static int k_set_temperature(struct fb_info *info)
 		ASSERT(gptHWCFG);
 		
 		if(8==gptHWCFG->m_val.bDisplayCtrl || 12==gptHWCFG->m_val.bDisplayCtrl ||
-				13==gptHWCFG->m_val.bDisplayCtrl) 
+				13==gptHWCFG->m_val.bDisplayCtrl || 18==gptHWCFG->m_val.bDisplayCtrl) 
 		{
 #ifdef FP9928_ENABLED//[			
 			struct fp9928 *fp9928 = _get_fp9928();
@@ -923,6 +1011,16 @@ static int k_set_temperature(struct fb_info *info)
 			iChk = tps6518x_get_temperature(tps6518x,&giLastTemprature);
 #endif //]TPS65185_ENABLED
 		}
+		else 
+		if(19==gptHWCFG->m_val.bDisplayCtrl||20==gptHWCFG->m_val.bDisplayCtrl||
+				21==gptHWCFG->m_val.bDisplayCtrl||22==gptHWCFG->m_val.bDisplayCtrl)
+		{
+#ifdef SY7636_ENABLED //[
+			// 
+			struct sy7636 *sy7636 = _get_sy7636();	
+			iChk = sy7636_get_temperature(sy7636,&giLastTemprature);
+#endif //]SY7636_ENABLED
+	}
 
 		
 		if(iChk>=0) {
@@ -965,7 +1063,7 @@ static int k_set_vcom(int iVCOM_set_mV)
 	ASSERT(gptHWCFG);
 	//printk("%s(%d):%s\n",__FILE__,__LINE__,__FUNCTION__);
 	if(8==gptHWCFG->m_val.bDisplayCtrl || 12==gptHWCFG->m_val.bDisplayCtrl ||
-				13==gptHWCFG->m_val.bDisplayCtrl) 
+				13==gptHWCFG->m_val.bDisplayCtrl || 18==gptHWCFG->m_val.bDisplayCtrl) 
 	{
 #ifdef FP9928_ENABLED//[			
 		struct fp9928 *fp9928 = _get_fp9928();
@@ -995,6 +1093,21 @@ static int k_set_vcom(int iVCOM_set_mV)
 		}
 #endif //]TPS65185_ENABLED
 	}
+	else 
+	if(19==gptHWCFG->m_val.bDisplayCtrl||20==gptHWCFG->m_val.bDisplayCtrl||
+		21==gptHWCFG->m_val.bDisplayCtrl||22==gptHWCFG->m_val.bDisplayCtrl)
+	{
+#ifdef SY7636_ENABLED //[
+		struct sy7636 *sy7636 = _get_sy7636();
+		iRet = sy7636_set_vcom(sy7636,iVCOM_set_mV,0);
+		if(iRet>=0) {
+			int iVCOM_get_mV;
+			if(sy7636_get_vcom(sy7636,&iVCOM_get_mV)>=0) {
+				vcom_nominal=iVCOM_get_mV*1000;/* save the vcom_nominal value in uV */
+			}
+		}
+#endif //]SY7636_ENABLED
+	}		
 	else {
 	}
 
@@ -1005,7 +1118,7 @@ static int k_set_vcom_to_flash(int iVCOM_set_mV)
 	int iRet=0;
 	//printk("%s(%d):%s\n",__FILE__,__LINE__,__FUNCTION__);
 	if(8==gptHWCFG->m_val.bDisplayCtrl || 12==gptHWCFG->m_val.bDisplayCtrl ||
-				13==gptHWCFG->m_val.bDisplayCtrl) 
+				13==gptHWCFG->m_val.bDisplayCtrl || 18==gptHWCFG->m_val.bDisplayCtrl) 
 	{
 #ifdef FP9928_ENABLED//[
 		struct fp9928 *fp9928 = _get_fp9928();
@@ -1035,6 +1148,21 @@ static int k_set_vcom_to_flash(int iVCOM_set_mV)
 		}
 #endif //]TPS65185_ENABLED
 	}
+	else 
+	if(19==gptHWCFG->m_val.bDisplayCtrl||20==gptHWCFG->m_val.bDisplayCtrl||
+		21==gptHWCFG->m_val.bDisplayCtrl||22==gptHWCFG->m_val.bDisplayCtrl)
+	{
+#ifdef SY7636_ENABLED //[
+		struct sy7636 *sy7636 = _get_sy7636();
+		iRet = sy7636_set_vcom(sy7636,iVCOM_set_mV,1);
+		if(iRet>=0) {
+			int iVCOM_get_mV;
+			if(sy7636_get_vcom(sy7636,&iVCOM_get_mV)>=0) {
+				vcom_nominal=iVCOM_get_mV*1000;/* save the vcom_nominal value in uV */
+			}
+		}
+#endif //]SY7636_ENABLED
+	}		
 	else {
 	}
 	return iRet;
@@ -1045,7 +1173,7 @@ static int k_get_vcom(int *O_piVCOM_get_mV)
 	int iRet=0;
 	//printk("%s(%d):%s\n",__FILE__,__LINE__,__FUNCTION__);
 	if(8==gptHWCFG->m_val.bDisplayCtrl|| 12==gptHWCFG->m_val.bDisplayCtrl ||
-				13==gptHWCFG->m_val.bDisplayCtrl) 
+				13==gptHWCFG->m_val.bDisplayCtrl|| 18==gptHWCFG->m_val.bDisplayCtrl) 
 	{
 
 		if(vcom_nominal) {
@@ -1079,6 +1207,23 @@ static int k_get_vcom(int *O_piVCOM_get_mV)
 			// MX50+tps16585/MX6SL+tps65185/MX7D+tps65185 .
 			iRet = tps6518x_get_vcom(tps6518x,O_piVCOM_get_mV);
 #endif //]TPS65185_ENABLED
+		}
+	}
+	else 
+	if(19==gptHWCFG->m_val.bDisplayCtrl||20==gptHWCFG->m_val.bDisplayCtrl||
+		21==gptHWCFG->m_val.bDisplayCtrl||22==gptHWCFG->m_val.bDisplayCtrl)
+	{
+		if(vcom_nominal) {
+			if(O_piVCOM_get_mV) {
+				*O_piVCOM_get_mV = vcom_nominal/1000;
+			}
+		}
+		else {
+#ifdef SY7636_ENABLED//[
+			struct sy7636 *sy7636 = _get_sy7636();
+
+			iRet = sy7636_get_vcom(sy7636,O_piVCOM_get_mV);
+#endif //]SY7636_ENABLED
 		}
 	}
 	else {
@@ -1275,18 +1420,36 @@ static inline void ntx_epdc_set_update_dimensions(u32 width, u32 height)
 }
 static void ntx_epdc_pmic_exception(int iEvt)
 {
-	if(7==gptHWCFG->m_val.bDisplayCtrl || 15==gptHWCFG->m_val.bDisplayCtrl) {
-		// MX6SL+TPS65185 | MX6SLL+TPS65185 .
+	if(7==gptHWCFG->m_val.bDisplayCtrl || 15==gptHWCFG->m_val.bDisplayCtrl||
+			19==gptHWCFG->m_val.bDisplayCtrl || 20==gptHWCFG->m_val.bDisplayCtrl ||
+			21==gptHWCFG->m_val.bDisplayCtrl || 22==gptHWCFG->m_val.bDisplayCtrl) 
+	{
+		// MX6SL+TPS65185 | MX6SLL+TPS65185 | MX6SL+SY7636|MX6ULL+SY7636|MX6SLL+SY7636|MX6DL+SY7636 .
 #ifdef TPS65185_ENABLED//[
-		struct tps6518x *tps6518x = _get_tps6518x();
-		// MX6SL + TPS65185 .
-		printk(KERN_ERR"%s(%d),native_w=%d,native_h=%d\n",__FUNCTION__,iEvt,
-				(int)g_fb_data->native_width,(int)g_fb_data->native_height);
-		//if(tps65185_int_state_get()>=0) 
 		{
-			tps6518x_int_state_clear(tps6518x);
+			struct tps6518x *tps6518x = _get_tps6518x();
+			// MX6SL + TPS65185 .
+			printk(KERN_ERR"%s(%d),native_w=%d,native_h=%d\n",__FUNCTION__,iEvt,
+				(int)g_fb_data->native_width,(int)g_fb_data->native_height);
+			//if(tps65185_int_state_get()>=0) 
+			{
+				tps6518x_int_state_clear(tps6518x);
+			}
 		}
+#endif //]TPS65185_ENABLED
 
+#ifdef SY7636_ENABLED//[
+		{
+			struct sy7636 *sy7636 = _get_sy7636();
+			// MX6SL + TPS65185 .
+			printk(KERN_ERR"%s(%d),native_w=%d,native_h=%d\n",__FUNCTION__,iEvt,
+				(int)g_fb_data->native_width,(int)g_fb_data->native_height);
+			//if(tps65185_int_state_get()>=0) 
+			{
+				sy7636_int_state_clear(sy7636);
+			}
+		}
+#endif //] SY7636_ENABLED
 		//g_fb_data->powering_down = true;
 		epdc_powerdown(g_fb_data);
 #ifdef VDROP_PROC_IN_KERNEL //[
@@ -1301,12 +1464,80 @@ static void ntx_epdc_pmic_exception(int iEvt)
 		ntx_epdc_pmic_exception_state_set(EPD_PMIC_EXCEPTION_STATE_REUPDATE_INIT);
 		printk(KERN_WARNING"EPD PMIC exceptions occured !!!\n");
 #endif //] VDROP_PROC_IN_KERNEL
-#endif //]TPS65185_ENABLED
 	}
 }
 static int ntx_epdc_pmic_get_exception_state(void)
 {
 	return giEPD_PMIC_exception_state;
+}
+
+static int k_mx5_send_epd_update(struct mxcfb_mx5_update_data *ptUPD_DATA)
+{
+	int ret = 0;
+	struct mxcfb_update_data upd_data;
+
+	if(EPD_PMIC_EXCEPTION_STATE_REUPDATING==ntx_epdc_pmic_get_exception_state()) {
+		printk(KERN_ERR"%s(%d):sending update when pmic exception processing ! scr.w=%d,scr.h=%d,upd.w=%d,upd.h=%d\n",
+			__FUNCTION__,__LINE__,g_fb_data->native_width,g_fb_data->native_height,
+			ptUPD_DATA->update_region.width,ptUPD_DATA->update_region.height);
+		if(g_fb_data->native_width==ptUPD_DATA->update_region.width && 
+			 g_fb_data->native_height==ptUPD_DATA->update_region.height )
+		{
+			ntx_epdc_pmic_exception_abort();
+		}
+		else {
+			ntx_epdc_pmic_wait_exception_rect_reupdate(&g_fb_data->info);
+		}
+
+	}
+	ptUPD_DATA->flags |= EPDC_FLAG_USE_ALT_BUFFER; // EPDC_FLAG_USE_ALT_BUFFER
+	ptUPD_DATA->alt_buffer_data.phys_addr = g_fb_data->info.fix.smem_start+g_fb_data->info.fix.smem_len;
+
+#if 0
+	printk("%s():smem@0x%p,sz=%ld,alt buf phy addr@%p\n",
+			__FUNCTION__,
+			g_fb_data->info.fix.smem_start,
+			g_fb_data->map_size,
+			ptUPD_DATA->alt_buffer_data.phys_addr);
+#endif
+
+	ptUPD_DATA->alt_buffer_data.width = g_fb_data->info.var.xres_virtual;
+	ptUPD_DATA->alt_buffer_data.height = g_fb_data->info.var.yres;
+	ptUPD_DATA->alt_buffer_data.alt_update_region.top = ptUPD_DATA->update_region.top;
+	ptUPD_DATA->alt_buffer_data.alt_update_region.left = ptUPD_DATA->update_region.left;
+	ptUPD_DATA->alt_buffer_data.alt_update_region.width = ptUPD_DATA->update_region.width;
+	ptUPD_DATA->alt_buffer_data.alt_update_region.height = ptUPD_DATA->update_region.height;
+
+
+	upd_data.update_region.top = ptUPD_DATA->update_region.top;
+	upd_data.update_region.left = ptUPD_DATA->update_region.left;
+	upd_data.update_region.width = ptUPD_DATA->update_region.width;
+	upd_data.update_region.height = ptUPD_DATA->update_region.height;
+
+	upd_data.update_mode = ptUPD_DATA->update_mode;
+	upd_data.update_marker = ptUPD_DATA->update_marker;
+	upd_data.waveform_mode = ptUPD_DATA->waveform_mode;
+	upd_data.temp = ptUPD_DATA->temp;
+	upd_data.flags = ptUPD_DATA->flags;
+	upd_data.dither_mode = 0;
+	upd_data.quant_bit = 0;
+
+	upd_data.alt_buffer_data.phys_addr = ptUPD_DATA->alt_buffer_data.phys_addr;
+	upd_data.alt_buffer_data.width = ptUPD_DATA->alt_buffer_data.width;
+	upd_data.alt_buffer_data.height = ptUPD_DATA->alt_buffer_data.height;
+	upd_data.alt_buffer_data.alt_update_region.top = ptUPD_DATA->alt_buffer_data.alt_update_region.top;
+	upd_data.alt_buffer_data.alt_update_region.left = ptUPD_DATA->alt_buffer_data.alt_update_region.left;
+	upd_data.alt_buffer_data.alt_update_region.width = ptUPD_DATA->alt_buffer_data.alt_update_region.width;
+	upd_data.alt_buffer_data.alt_update_region.height = ptUPD_DATA->alt_buffer_data.alt_update_region.height;
+
+	ret = mxc_epdc_fb_send_update(&upd_data, &g_fb_data->info);
+	if(-EMEDIUMTYPE==ret) {
+		printk(KERN_ERR"%s(%d):detected contents unable to update on screen !\n",
+				__FUNCTION__,__LINE__);
+		return -EMEDIUMTYPE;
+	}
+
+	return ret;
 }
 
 static int k_fake_s1d13522_logo_progress(unsigned char *pbInitDCbuf)
@@ -1356,6 +1587,10 @@ static int k_fake_s1d13522_logo_progress(unsigned char *pbInitDCbuf)
 					else if(8==gptHWCFG->m_val.bDisplayResolution) {
 						ilogo_width = 1872 ;
 						ilogo_height = 1404 ;
+					}
+					else if(14==gptHWCFG->m_val.bDisplayResolution) {
+						ilogo_width = 1920 ;
+						ilogo_height = 1440 ;
 					}
 					else {
 						ilogo_width = 800 ;
@@ -1444,12 +1679,17 @@ static int k_fake_s1d13522_init(unsigned char *pbInitDCbuf)
 	int vcom_mV;
 
 #ifdef TPS65185_ENABLED//[
-	struct tps6518x *tps6518x = _get_tps6518x();
+	struct tps6518x *tps6518x = 0;
 #endif //] TPS65185_ENABLED
 
 #ifdef FP9928_ENABLED//[
-	struct fp9928 *fp9928 = _get_fp9928();
+	struct fp9928 *fp9928 = 0;
 #endif //] FP9928_ENABLED
+
+#ifdef SY7636_ENABLED//[
+	struct sy7636 *sy7636 = 0;
+#endif //] SY7636_ENABLED
+
 
 	//printk("\n%s() DisplayCtrl=%d\n\n",__FUNCTION__,(int)gptHWCFG->m_val.bDisplayCtrl);
 
@@ -1472,6 +1712,7 @@ static int k_fake_s1d13522_init(unsigned char *pbInitDCbuf)
 		gptDC->pfnSetVCOM = k_set_vcom;
 		gptDC->pfnGetVCOM = k_get_vcom;
 		gptDC->pfnSetVCOMToFlash = k_set_vcom_to_flash;
+		gptDC->pfnSendEPDUpd = k_mx5_send_epd_update;
 		
 		//gptDC->dwFlags |= EPDFB_DC_FLAG_OFB_RGB565;
 		gptDC->dwFlags |= EPDFB_DC_FLAG_FLASHDIRTY;
@@ -1489,17 +1730,43 @@ static int k_fake_s1d13522_init(unsigned char *pbInitDCbuf)
 		g_mxc_upd_data.update_marker = 0;
 		g_mxc_upd_data.temp = TEMP_USE_AMBIENT;
 		g_mxc_upd_data.flags = 0;
+		g_mxc_upd_data.dither_mode = 0;
+		g_mxc_upd_data.quant_bit = 0;
+
 		//g_mxc_upd_data.alt_buffer_data = ;
 		//mxc_epdc_fb_set_upd_scheme(UPDATE_SCHEME_SNAPSHOT,&g_fb_data->info);
 
 		 printk("%s(%d):%s,DisplayResolution=%d\n",__FILE__,__LINE__,__FUNCTION__,
 			gptHWCFG->m_val.bDisplayResolution);
 		
-		if(7==gptHWCFG->m_val.bDisplayCtrl) {
+		switch (gptHWCFG->m_val.bDisplayCtrl) {
+#ifdef FP9928_ENABLED//[
+			case 8: // MX6SL+FP9928
+			case 12: // MX6ULL+FP9928
+			case 13: // MX6SLL+FP9928
+			case 18:// MX6DL+FP9928
+				fp9928 = _get_fp9928();
+				break;
+#endif //]FP9928_ENABLE
 #ifdef TPS65185_ENABLED//[
-			// MX6SL+TPS65185
-			tps6518x_int_callback_setup(tps6518x,ntx_epdc_pmic_exception);
+			case 7 : // MX6SL+TPS65185
+			case 11 : // MX7D+TPS65185
+			case 15 : // MX6SLL+TPS65185
+			case 16 : // MX6ULL+TPS65185
+			case 17 : // MX6DL+TPS65185
+				tps6518x = _get_tps6518x();
+				tps6518x_int_callback_setup(tps6518x,ntx_epdc_pmic_exception);
+				break;
 #endif //]TPS65185_ENABLED
+#ifdef SY7636_ENABLED//[
+			case 19 : // MX6SL+SY7636
+			case 20 : // MX6ULL+SY7636
+			case 21 : // MX6SLL+SY7636
+			case 22 : // MX6DL+SY7636
+				sy7636 = _get_sy7636();
+				sy7636_int_callback_setup(sy7636,ntx_epdc_pmic_exception);
+				break;
+#endif //]SY7636_ENABLED
 		}
 
 			//tps16585 .
@@ -1509,7 +1776,8 @@ static int k_fake_s1d13522_init(unsigned char *pbInitDCbuf)
 					//printk("%s(),init TPS65185 @ i2c%d\n",__FUNCTION__,iPortA[i]);
 					if(8==gptHWCFG->m_val.bDisplayCtrl || 
 						12==gptHWCFG->m_val.bDisplayCtrl ||
-						13==gptHWCFG->m_val.bDisplayCtrl) 
+						13==gptHWCFG->m_val.bDisplayCtrl || 
+						18==gptHWCFG->m_val.bDisplayCtrl) 
 					{
 #ifdef FP9928_ENABLED//[			
 						if(0!=glVCOM_uV) {
@@ -1522,6 +1790,27 @@ static int k_fake_s1d13522_init(unsigned char *pbInitDCbuf)
 						iChk=0;
 						vcom_mV=-2500;
 #endif //]FP9928_ENABLED
+					}
+					else 
+					if(19==gptHWCFG->m_val.bDisplayCtrl||20==gptHWCFG->m_val.bDisplayCtrl||
+						21==gptHWCFG->m_val.bDisplayCtrl||22==gptHWCFG->m_val.bDisplayCtrl)
+					{
+#ifdef SY7636_ENABLED //[
+						if(0!=glVCOM_uV) {
+							if(sy7636_set_vcom(sy7636,(int)(glVCOM_uV/1000),0)<0) {
+								WARNING_MSG("%s(),sy7636 vcom set to %d uV fail !\n",
+									__FUNCTION__,glVCOM_uV);
+							}
+							else {
+								DBG_MSG("%s():sy7636 set vcom to %d uV ok !\n",
+									__FUNCTION__,glVCOM_uV);
+							}
+						}
+						iChk = sy7636_get_vcom(sy7636,&vcom_mV);
+#else //]!SY7636_ENABLED
+						iChk=0;
+						vcom_mV=-2500;
+#endif //]SY7636_ENABLED
 					}
 					else {
 #ifdef TPS65185_ENABLED//[
