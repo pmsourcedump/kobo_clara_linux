@@ -41,11 +41,15 @@ static inline void imx6sl_fec_init(void)
 	imx6_enet_mac_init("fsl,imx6sl-fec", "fsl,imx6sl-ocotp");
 }
 
+extern void ntx_wifi_power_ctrl (int isWifiEnable);
+
 static void __init imx6sl_init_late(void)
 {
 	/* imx6sl reuses imx6q cpufreq driver */
 	if (IS_ENABLED(CONFIG_ARM_IMX6Q_CPUFREQ))
 		platform_device_register_simple("imx6q-cpufreq", -1, NULL, 0);
+
+	ntx_wifi_power_ctrl (0);
 
 	/* cpuidle will be enabled later for i.MX6SLL */
 	if (cpu_is_imx6sll())
@@ -62,7 +66,13 @@ static void __init imx6sl_init_machine(void)
 	if (parent == NULL)
 		pr_warn("failed to initialize soc device\n");
 
+#if 0	// This will move all on-SOC devices from /sys/devices/platform to /sys/devices/soc0.
 	of_platform_populate(NULL, of_default_bus_match_table, NULL, parent);
+#else
+	of_platform_populate(NULL, of_default_bus_match_table, NULL, NULL);
+#endif
+
+	ntx_parse_cmdline();
 
 	if (!cpu_is_imx6sll())
 		imx6sl_fec_init();

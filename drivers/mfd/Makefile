@@ -187,3 +187,7 @@ obj-$(CONFIG_MFD_MXC_HDMI)	+= mxc-hdmi-core.o
 intel-soc-pmic-objs		:= intel_soc_pmic_core.o intel_soc_pmic_crc.o
 obj-$(CONFIG_INTEL_SOC_PMIC)	+= intel-soc-pmic.o
 obj-$(CONFIG_MFD_MT6397)	+= mt6397-core.o
+obj-$(CONFIG_MFD_RICOH619)	+= ricoh619.o ricoh619-irq.o
+obj-$(CONFIG_MFD_FP9928)	+= fp9928.o
+obj-$(CONFIG_MFD_TPS6518X)      += tps6518x-core.o
+

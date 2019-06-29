@@ -129,7 +129,7 @@ int update_lpddr2_freq(int ddr_rate)
 	if (ddr_rate == curr_ddr_rate)
 		return 0;
 
-	printk(KERN_DEBUG "\nBus freq set to %d start...\n", ddr_rate);
+	printk(KERN_DEBUG"\nBus freq set to %d start...\n", ddr_rate);
 
 	spin_lock_irqsave(&freq_lock, flags);
 	/*

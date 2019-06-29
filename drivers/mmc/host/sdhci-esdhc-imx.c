@@ -156,19 +156,6 @@
 /* A higher clock ferquency than this rate requires strobell dll control */
 #define ESDHC_STROBE_DLL_CLK_FREQ	100000000
 
-static struct mmc_host *wifi_mmc_host;
-void wifi_card_detect(bool on)
-{
-	WARN_ON(!wifi_mmc_host);
-	if (on) {
-		mmc_detect_change(wifi_mmc_host, 0);
-	} else {
-		if (wifi_mmc_host->card)
-			mmc_sdio_force_remove(wifi_mmc_host);
-	}
-}
-EXPORT_SYMBOL(wifi_card_detect);
-
 struct esdhc_soc_data {
 	u32 flags;
 };
@@ -269,6 +256,27 @@ static const struct of_device_id imx_esdhc_dt_ids[] = {
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, imx_esdhc_dt_ids);
+
+static struct sdhci_host *wifi_mmc_host;
+static int wifi_pwr_status;
+void wifi_card_detect(bool on)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(wifi_mmc_host);
+	struct pltfm_imx_data *imx_data = pltfm_host->priv;
+
+	WARN_ON(!wifi_mmc_host);
+	if (on) {
+		pinctrl_select_state(imx_data->pinctrl, imx_data->pins_default);
+		mmc_detect_change(wifi_mmc_host->mmc, 0);
+	} else {
+		if (wifi_mmc_host->mmc->card) {
+			mmc_sdio_force_remove(wifi_mmc_host->mmc);
+		}
+		pinctrl_select_state(imx_data->pinctrl, mmc_dev(wifi_mmc_host->mmc)->pins->sleep_state);
+	}
+	wifi_pwr_status = on;
+}
+EXPORT_SYMBOL(wifi_card_detect);
 
 static inline int is_imx25_esdhc(struct pltfm_imx_data *data)
 {
@@ -864,6 +872,9 @@ static int esdhc_change_pinstate(struct sdhci_host *host,
 	struct pltfm_imx_data *imx_data = pltfm_host->priv;
 	struct pinctrl_state *pinctrl;
 
+	if (wifi_mmc_host == host && !wifi_pwr_status) 	// do not change wifi sdio pads if wifi off.
+		return 0;
+
 	dev_dbg(mmc_dev(host->mmc), "change pinctrl state for uhs %d\n", uhs);
 
 	if (IS_ERR(imx_data->pinctrl) ||
@@ -1119,7 +1130,7 @@ sdhci_esdhc_imx_probe_dt(struct platform_device *pdev,
 		host->quirks &= ~SDHCI_QUIRK_BROKEN_CARD_DETECTION;
 
 	if (of_get_property(np, "wifi-host", NULL)) {
-		wifi_mmc_host = host->mmc;
+		wifi_mmc_host = host;
 		host->quirks2 |= SDHCI_QUIRK2_SDIO_IRQ_THREAD;
 		dev_info(mmc_dev(host->mmc), "assigned as wifi host\n");
 	}

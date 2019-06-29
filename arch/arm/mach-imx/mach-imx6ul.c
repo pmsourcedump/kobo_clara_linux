@@ -175,6 +175,9 @@ static void __init imx6ul_init_machine(void)
 		pr_warn("failed to initialize soc device\n");
 
 	of_platform_populate(NULL, of_default_bus_match_table, NULL, NULL);
+
+	ntx_parse_cmdline();
+
 	imx6ul_enet_init();
 	imx_anatop_init();
 	imx6ul_pm_init();
@@ -188,12 +191,15 @@ static void __init imx6ul_init_irq(void)
 	irqchip_init();
 }
 
+extern void ntx_wifi_power_ctrl (int isWifiEnable);
+
 static void __init imx6ul_init_late(void)
 {
 	if (IS_ENABLED(CONFIG_ARM_IMX6Q_CPUFREQ)) {
 		imx6ul_opp_init();
 		platform_device_register_simple("imx6q-cpufreq", -1, NULL, 0);
 	}
+	ntx_wifi_power_ctrl (0);
 
 	imx6ul_cpuidle_init();
 }

@@ -94,8 +94,8 @@ struct mxcfb_rect {
 #define UPDATE_MODE_PARTIAL			0x0
 #define UPDATE_MODE_FULL			0x1
 
-#define WAVEFORM_MODE_GLR16			4
-#define WAVEFORM_MODE_GLD16			5
+#define WAVEFORM_MODE_GLR16			6
+#define WAVEFORM_MODE_GLD16			7
 #define WAVEFORM_MODE_AUTO			257
 
 #define TEMP_USE_AMBIENT			0x1000
@@ -120,6 +120,16 @@ enum mxcfb_dithering_mode {
 };
 
 #define FB_POWERDOWN_DISABLE			-1
+#define FB_TEMP_AUTO_UPDATE_DISABLE     -1
+
+struct mxcfb_alt_buffer_data_ntx {
+	void *virt_addr;
+	__u32 phys_addr;
+	__u32 width;	/* width of entire buffer */
+	__u32 height;	/* height of entire buffer */
+	struct mxcfb_rect alt_update_region;	/* region within buffer to update */
+};
+
 
 struct mxcfb_alt_buffer_data {
 	__u32 phys_addr;
@@ -128,6 +138,32 @@ struct mxcfb_alt_buffer_data {
 	struct mxcfb_rect alt_update_region;	/* region within buffer to update */
 };
 
+// mxcfb_update_data v1 for NTX linux since from mx50/mx6sl .
+struct mxcfb_update_data_v1_ntx {
+	struct mxcfb_rect update_region;
+	__u32 waveform_mode;
+	__u32 update_mode;
+	__u32 update_marker;
+	int temp;
+	unsigned int flags;
+	struct mxcfb_alt_buffer_data_ntx alt_buffer_data;
+};
+
+
+// mxcfb_update_data v1 since from mx50/mx6sl .
+struct mxcfb_update_data_v1 {
+	struct mxcfb_rect update_region;
+	__u32 waveform_mode;
+	__u32 update_mode;
+	__u32 update_marker;
+	int temp;
+	unsigned int flags;
+	struct mxcfb_alt_buffer_data alt_buffer_data;
+};
+
+
+// mxcfb_update_data v2 since from mx7d .
+#define mxcfb_update_data_v2 mxcfb_update_data
 struct mxcfb_update_data {
 	struct mxcfb_rect update_region;
 	__u32 waveform_mode;
@@ -145,10 +181,38 @@ struct mxcfb_update_marker_data {
 	__u32 collision_test;
 };
 
+
+#define WFM_ENABLE_AA				1
+#define WFM_ENABLE_AAD			1
+
+
 /*
  * Structure used to define waveform modes for driver
  * Needed for driver to perform auto-waveform selection
  */
+#ifndef MXCFB_WAVEFORM_MODES_NTX //[
+#define MXCFB_WAVEFORM_MODES_NTX
+struct mxcfb_waveform_modes_ntx {
+	int mode_init;
+	int mode_du;
+	int mode_gc4;
+	int mode_gc8;
+	int mode_gc16;
+	int mode_gc32;
+	int mode_gl16;
+	int mode_a2;
+
+#ifdef WFM_ENABLE_AA//[
+	int mode_aa;
+#endif //]WFM_ENABLE_AA
+
+#ifdef WFM_ENABLE_AAD//[
+	int mode_aad;
+#endif //]WFM_ENABLE_AAD
+	
+};
+#endif//] MXCFB_WAVEFORM_MODES_NTX
+
 struct mxcfb_waveform_modes {
 	int mode_init;
 	int mode_du;
@@ -185,14 +249,23 @@ struct mxcfb_csc_matrix {
 
 /* IOCTLs for E-ink panel updates */
 #define MXCFB_SET_WAVEFORM_MODES	_IOW('F', 0x2B, struct mxcfb_waveform_modes)
+#define MXCFB_SET_WAVEFORM_MODES_NTX	_IOW('F', 0x2B, struct mxcfb_waveform_modes_ntx)
 #define MXCFB_SET_TEMPERATURE		_IOW('F', 0x2C, int32_t)
 #define MXCFB_SET_AUTO_UPDATE_MODE	_IOW('F', 0x2D, __u32)
+#define MXCFB_SEND_UPDATE_V1_NTX		_IOW('F', 0x2E, struct mxcfb_update_data_v1_ntx)
+#define MXCFB_SEND_UPDATE_V1		_IOW('F', 0x2E, struct mxcfb_update_data_v1)
 #define MXCFB_SEND_UPDATE		_IOW('F', 0x2E, struct mxcfb_update_data)
-#define MXCFB_WAIT_FOR_UPDATE_COMPLETE	_IOWR('F', 0x2F, struct mxcfb_update_marker_data)
+#define MXCFB_SEND_UPDATE_V2		_IOW('F', 0x2E, struct mxcfb_update_data)
+#define MXCFB_WAIT_FOR_UPDATE_COMPLETE	_IOWR('F', 0x2F, struct mxcfb_update_marker_data) // mx7d/mx6ull/mx6sll interface .
+#define MXCFB_WAIT_FOR_UPDATE_COMPLETE_V3	_IOWR('F', 0x2F, struct mxcfb_update_marker_data) // mx7d/mx6ull/mx6sll interface .
+#define MXCFB_WAIT_FOR_UPDATE_COMPLETE_V1	_IOW('F', 0x2F, __u32) // mx50/NTX interface .
+#define MXCFB_WAIT_FOR_UPDATE_COMPLETE_V2	_IOWR('F', 0x35, struct mxcfb_update_marker_data) // mx6sl BSP interface .
 #define MXCFB_SET_PWRDOWN_DELAY		_IOW('F', 0x30, int32_t)
 #define MXCFB_GET_PWRDOWN_DELAY		_IOR('F', 0x31, int32_t)
 #define MXCFB_SET_UPDATE_SCHEME		_IOW('F', 0x32, __u32)
 #define MXCFB_GET_WORK_BUFFER		_IOWR('F', 0x34, unsigned long)
 #define MXCFB_DISABLE_EPDC_ACCESS	_IO('F', 0x35)
 #define MXCFB_ENABLE_EPDC_ACCESS	_IO('F', 0x36)
+#define MXCFB_SET_TEMP_AUTO_UPDATE_PERIOD   _IOW('F', 0x37, int32_t)
 #endif
+

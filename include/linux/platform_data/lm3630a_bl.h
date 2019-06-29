@@ -37,6 +37,7 @@ enum lm3630a_ledb_ctrl {
 };
 
 #define LM3630A_MAX_BRIGHTNESS 255
+#define LM3630A_DEF_FULLSCALE 31	// defalut max full scale (28.5mA)
 /*
  *@leda_init_brt : led a init brightness. 4~255
  *@leda_max_brt  : led a max brightness.  4~255
@@ -52,10 +53,12 @@ struct lm3630a_platform_data {
 	/* led a config.  */
 	int leda_init_brt;
 	int leda_max_brt;
+	int leda_full_scale;
 	enum lm3630a_leda_ctrl leda_ctrl;
 	/* led b config. */
 	int ledb_init_brt;
 	int ledb_max_brt;
+	int ledb_full_scale;
 	enum lm3630a_ledb_ctrl ledb_ctrl;
 	/* pwm config. */
 	unsigned int pwm_period;

@@ -342,6 +342,13 @@ config CHARGER_GPIO
 	  This driver can be build as a module. If so, the module will be
 	  called gpio-charger.
 
+config BATTERY_RICOH619
+	tristate "Ricoh R5T619 PMIC battery driver"
+	depends on MFD_RICOH619
+	help
+	  Say Y to enable support for the battery control of the Ricoh R5T619
+	  Power Management device.
+
 config CHARGER_MANAGER
 	bool "Battery charger manager for multiple chargers"
 	depends on REGULATOR

@@ -411,6 +411,12 @@ config KEYBOARD_SNVS_PWRKEY
 	  To compile this driver as a module, choose M here; the
 	  module will be called snvs_pwrkey.
 
+config KEYBOARD_NTXEVT0
+	tristate "NTX event0 key Driver"
+	help
+	  This is the event0 key driver for the Netronix application
+
+
 config KEYBOARD_IMX
 	tristate "IMX keypad support"
 	depends on ARCH_MXC

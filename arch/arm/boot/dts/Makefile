@@ -397,6 +397,14 @@ dtb-$(CONFIG_SOC_IMX6UL) += \
 	imx6ul-9x9-evk-btwifi.dtb \
 	imx6ul-9x9-evk-csi.dtb \
 	imx6ul-9x9-evk-ldo.dtb
+dtb-$(CONFIG_SOC_IMX6SLL) += \
+	imx6sll-lpddr2-ntx.dtb \
+	imx6sll-e70q02.dtb \
+	imx6sll-t05r02.dtb \
+	imx6sll-e60qm2.dtb \
+	imx6sll-e60qp2.dtb \
+	imx6sll-e60ql2.dtb \
+	imx6sll-e60k02.dtb 
 dtb-$(CONFIG_SOC_IMX6ULL) += \
 	imx6ull-14x14-ddr3-arm2.dtb \
 	imx6ull-14x14-ddr3-arm2-adc.dtb \
@@ -419,6 +427,10 @@ dtb-$(CONFIG_SOC_IMX6ULL) += \
 	imx6ull-14x14-evk-emmc.dtb \
 	imx6ull-14x14-evk-gpmi-weim.dtb \
 	imx6ull-14x14-evk-usb-certi.dtb \
+	imx6ull-ntx-ddr3.dtb \
+	imx6ull-ntx-e60u02.dtb \
+	imx6ull-ntx-e60u02a1.dtb \
+	imx6ull-e60u12.dtb \
 	imx6ull-9x9-evk.dtb \
 	imx6ull-9x9-evk-btwifi.dtb \
 	imx6ull-9x9-evk-ldo.dtb

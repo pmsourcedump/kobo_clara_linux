@@ -4,6 +4,7 @@
 struct device;
 struct gpio_desc;
 
+typedef int (*gpio_keys_callback)(struct gpio_keys_button *I_gpio_btn_data,int state);
 /**
  * struct gpio_keys_button - configuration parameters
  * @code:		input event code (KEY_*, SW_*)
@@ -29,9 +30,11 @@ struct gpio_keys_button {
 	int wakeup;
 	int debounce_interval;
 	bool can_disable;
+	bool do_not_wakeup_in_hibernation;
 	int value;
 	unsigned int irq;
 	struct gpio_desc *gpiod;
+	gpio_keys_callback hook;
 };
 
 /**

@@ -22,6 +22,13 @@
 #include <linux/timer.h>
 #include "leds.h"
 
+
+#ifdef CONFIG_NTX_LED //[
+extern int ntx_register_ledcdev_green(struct led_classdev *led_cdev);
+extern int ntx_register_ledcdev_red(struct led_classdev *led_cdev);
+extern int ntx_register_ledcdev_blue(struct led_classdev *led_cdev);
+#endif //] CONFIG_NTX_LED 
+
 static struct class *leds_class;
 
 static ssize_t brightness_show(struct device *dev,
@@ -286,6 +293,23 @@ int led_classdev_register(struct device *parent, struct led_classdev *led_cdev)
 #ifdef CONFIG_LEDS_TRIGGERS
 	led_trigger_set_default(led_cdev);
 #endif
+
+
+#ifdef CONFIG_NTX_LED //[
+	printk("%s():led_cdev->name=%s,name=%s\n",__FUNCTION__,led_cdev->name,name);
+	if(0==strcmp(led_cdev->name,"GLED")) {
+		ntx_register_ledcdev_green(led_cdev);
+	}
+	else 
+	if(0==strcmp(led_cdev->name,"RLED")) {
+		ntx_register_ledcdev_red(led_cdev);
+	}
+	else
+	if(0==strcmp(led_cdev->name,"BLED")) {
+		ntx_register_ledcdev_blue(led_cdev);
+	}
+#endif //]CONFIG_NTX_LED
+
 
 	dev_dbg(parent, "Registered led device: %s\n",
 			led_cdev->name);

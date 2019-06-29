@@ -535,6 +535,12 @@ config VEXPRESS_SYSCFG
 	  bus. System Configuration interface is one of the possible means
 	  of generating transactions on this bus.
 
+config NTX_LED
+	bool "Netronix LED interfaces"
+	help
+	  generate Netronix led control interfaces such as "/sys/devices/platform/pmic_light.1" .
+
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"

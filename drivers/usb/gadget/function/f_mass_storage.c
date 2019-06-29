@@ -1372,6 +1372,7 @@ static int do_start_stop(struct fsg_common *common)
 	fsg_lun_close(curlun);
 	up_write(&common->filesem);
 	down_read(&common->filesem);
+	kobject_uevent_env(&common->gadget->dev.parent->kobj, KOBJ_OFFLINE, NULL);
 
 	return 0;
 }

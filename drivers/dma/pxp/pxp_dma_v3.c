@@ -939,7 +939,7 @@ static void pxp_set_lut(struct pxps *pxp)
 	 * If LUT already configured as needed, return...
 	 * Unless CMAP is needed and it has been updated.
 	 */
-	if ((pxp->lut_state == lut_op) &&
+	if ((lut_op != PXP_LUT_INVERT) && (pxp->lut_state == lut_op) &&
 		!(use_cmap && pxp_conf->proc_data.lut_map_updated))
 		return;
 

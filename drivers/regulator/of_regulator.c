@@ -109,11 +109,11 @@ static void of_get_regulation_constraints(struct device_node *np,
 		default:
 			continue;
 		};
-
 		suspend_np = of_get_child_by_name(np, regulator_states[i]);
 		if (!suspend_np || !suspend_state)
 			continue;
 
+		constraints->initial_state=i;
 		if (!of_property_read_u32(suspend_np, "regulator-mode",
 					  &pval)) {
 			if (desc && desc->of_map_mode) {
