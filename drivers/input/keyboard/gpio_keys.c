@@ -32,6 +32,12 @@
 #include <linux/of_irq.h>
 #include <linux/spinlock.h>
 
+#include "../../../arch/arm/mach-imx/ntx_hwconfig.h"
+extern volatile NTX_HWCONFIG *gptHWCFG;
+
+extern int gSleep_Mode_Suspend;
+
+
 struct gpio_button_data {
 	const struct gpio_keys_button *button;
 	struct input_dev *input;
@@ -337,6 +343,15 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 	struct input_dev *input = bdata->input;
 	unsigned int type = button->type ?: EV_KEY;
 	int state = (gpio_get_value_cansleep(button->gpio) ? 1 : 0) ^ button->active_low;
+
+
+	if(button->hook) {
+		if( button->hook(button,state)<0 ) {
+			//printk("skip report \"%s\" btn %d,because hook return fail !\n",button->desc,state);
+			return ;
+		}
+	}
+
 
 	if (type == EV_ABS) {
 		if (state)
@@ -652,10 +667,30 @@ gpio_keys_get_devtree_pdata(struct device *dev)
 
 		button->desc = of_get_property(pp, "label", NULL);
 
+		if(0==strcmp(button->desc,"Power")) {
+			extern gpio_keys_callback ntx_get_power_key_hookfn(void);
+			gpio_keys_callback pfn;
+
+			pfn = ntx_get_power_key_hookfn();
+			if(pfn) {
+				button->hook = pfn;
+			}
+		}
+
+		if (gptHWCFG->m_val.bUIStyle) {
+			if(0==strcmp(button->desc,"Hall"))
+				button->code = KEY_F1;
+			else if (0==strcmp(button->desc,"Home"))
+				button->code = KEY_HOME;
+		}
+
 		if (of_property_read_u32(pp, "linux,input-type", &button->type))
 			button->type = EV_KEY;
 
 		button->wakeup = !!of_get_property(pp, "gpio-key,wakeup", NULL);
+		button->do_not_wakeup_in_hibernation = !!of_get_property(pp, "gpio-key,do-not-wakeup-hibernation", NULL);
+		printk("%s:do-not-wakeup-hibernation=%d\n",
+				button->desc,button->do_not_wakeup_in_hibernation);
 
 		button->can_disable = !!of_get_property(pp, "linux,can-disable", NULL);
 
@@ -696,6 +731,12 @@ static int gpio_keys_probe(struct platform_device *pdev)
 	int i, error;
 	int wakeup = 0;
 
+#ifdef CONFIG_KEYBOARD_NTXEVT0 //[	
+	extern struct input_dev * ntx_get_event0_inputdev(void);
+#endif //]CONFIG_KEYBOARD_NTXEVT0
+	int iIsNTX_EVT0 = 0;
+
+
 	if (!pdata) {
 		pdata = gpio_keys_get_devtree_pdata(dev);
 		if (IS_ERR(pdata))
@@ -710,11 +751,23 @@ static int gpio_keys_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	input = devm_input_allocate_device(dev);
-	if (!input) {
-		dev_err(dev, "failed to allocate input device\n");
-		return -ENOMEM;
+#ifdef CONFIG_KEYBOARD_NTXEVT0 //[	
+	input  = ntx_get_event0_inputdev();
+	if(!input) 
+#endif //]CONFIG_KEYBOARD_NTXEVT0
+	{
+		input = devm_input_allocate_device(dev);
+		if (!input) {
+			dev_err(dev, "failed to allocate input device\n");
+			return -ENOMEM;
+		}
 	}
+#ifdef CONFIG_KEYBOARD_NTXEVT0 //[	
+	else {
+		iIsNTX_EVT0 = 1;
+	}
+#endif //]CONFIG_KEYBOARD_NTXEVT0
+
 
 	ddata->pdata = pdata;
 	ddata->input = input;
@@ -749,6 +802,7 @@ static int gpio_keys_probe(struct platform_device *pdev)
 		if (button->wakeup)
 			wakeup = 1;
 	}
+	input_set_capability(input, EV_MSC, MSC_RAW);	// for si114x report event
 
 	error = sysfs_create_group(&pdev->dev.kobj, &gpio_keys_attr_group);
 	if (error) {
@@ -757,11 +811,14 @@ static int gpio_keys_probe(struct platform_device *pdev)
 		return error;
 	}
 
-	error = input_register_device(input);
-	if (error) {
-		dev_err(dev, "Unable to register input device, error: %d\n",
-			error);
-		goto err_remove_group;
+	if(!iIsNTX_EVT0) 
+	{
+		error = input_register_device(input);
+		if (error) {
+			dev_err(dev, "Unable to register input device, error: %d\n",
+				error);
+			goto err_remove_group;
+		}
 	}
 
 	device_init_wakeup(&pdev->dev, wakeup);
@@ -792,8 +849,11 @@ static int gpio_keys_suspend(struct device *dev)
 	if (device_may_wakeup(dev)) {
 		for (i = 0; i < ddata->pdata->nbuttons; i++) {
 			struct gpio_button_data *bdata = &ddata->data[i];
-			if (bdata->button->wakeup)
-				enable_irq_wake(bdata->irq);
+			if (bdata->button->wakeup) {
+				if( !gSleep_Mode_Suspend || !bdata->button->do_not_wakeup_in_hibernation) {
+					enable_irq_wake(bdata->irq);
+				}
+			}
 		}
 	} else {
 		mutex_lock(&input->mutex);
@@ -801,6 +861,8 @@ static int gpio_keys_suspend(struct device *dev)
 			gpio_keys_close(input);
 		mutex_unlock(&input->mutex);
 	}
+
+	pinctrl_pm_select_sleep_state(dev);
 
 	return 0;
 }
@@ -812,11 +874,16 @@ static int gpio_keys_resume(struct device *dev)
 	int error = 0;
 	int i;
 
+	pinctrl_pm_select_default_state(dev);
+
 	if (device_may_wakeup(dev)) {
 		for (i = 0; i < ddata->pdata->nbuttons; i++) {
 			struct gpio_button_data *bdata = &ddata->data[i];
-			if (bdata->button->wakeup)
-				disable_irq_wake(bdata->irq);
+			if (bdata->button->wakeup) {
+				if( !gSleep_Mode_Suspend || !bdata->button->do_not_wakeup_in_hibernation) {
+					disable_irq_wake(bdata->irq);
+				}
+			}
 		}
 	} else {
 		mutex_lock(&input->mutex);

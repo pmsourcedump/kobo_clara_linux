@@ -29,6 +29,9 @@
 #include <linux/rcupdate.h>
 #include "input-compat.h"
 
+#include "../../arch/arm/mach-imx/ntx_hwconfig.h"
+extern volatile NTX_HWCONFIG *gptHWCFG;
+
 MODULE_AUTHOR("Vojtech Pavlik <vojtech@suse.cz>");
 MODULE_DESCRIPTION("Input core");
 MODULE_LICENSE("GPL");
@@ -1675,10 +1678,22 @@ void input_reset_device(struct input_dev *dev)
 }
 EXPORT_SYMBOL(input_reset_device);
 
+extern int evdev_check_event (struct input_handle *handle);
+extern int gSleep_Mode_Suspend;
+
 #ifdef CONFIG_PM_SLEEP
 static int input_dev_suspend(struct device *dev)
 {
 	struct input_dev *input_dev = to_input_dev(dev);
+
+	struct input_handle *handle;
+	list_for_each_entry(handle, &input_dev->h_list, d_node) {
+		if(0x00 != gptHWCFG->m_val.bUIStyle && !gSleep_Mode_Suspend)	// Ebrmain can't enter suspend , because event not read complete
+		{
+			if (handle && evdev_check_event (handle))
+				return -1;
+		}		
+	}
 
 	spin_lock_irq(&input_dev->event_lock);
 
@@ -1686,7 +1701,7 @@ static int input_dev_suspend(struct device *dev)
 	 * Keys that are pressed now are unlikely to be
 	 * still pressed when we resume.
 	 */
-	input_dev_release_keys(input_dev);
+	//input_dev_release_keys(input_dev);
 
 	/* Turn off LEDs and sounds, if any are active. */
 	input_dev_toggle(input_dev, false);

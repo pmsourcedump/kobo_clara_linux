@@ -517,12 +517,17 @@ static int enter_state(suspend_state_t state)
  * Check if the value of @state represents one of the supported states,
  * execute enter_state() and update system suspend statistics.
  */
+extern volatile int giSuspendingState;
 int pm_suspend(suspend_state_t state)
 {
 	int error;
 
+
 	if (state <= PM_SUSPEND_ON || state >= PM_SUSPEND_MAX)
 		return -EINVAL;
+
+	//printk("%s(%d):entering susped\n",__FUNCTION__,__LINE__);
+	giSuspendingState = 1;
 
 	error = enter_state(state);
 	if (error) {
@@ -531,6 +536,10 @@ int pm_suspend(suspend_state_t state)
 	} else {
 		suspend_stats.success++;
 	}
+
+	giSuspendingState = 0;
+	//printk("%s(%d):exiting susped\n",__FUNCTION__,__LINE__);
+
 	return error;
 }
 EXPORT_SYMBOL(pm_suspend);

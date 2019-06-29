@@ -1279,6 +1279,11 @@ EXPORT_SYMBOL_GPL(pinctrl_pm_select_default_state);
  */
 int pinctrl_pm_select_sleep_state(struct device *dev)
 {
+	extern int gSleep_Mode_Suspend;
+
+	if (!gSleep_Mode_Suspend)
+		return 0;
+
 	if (!dev->pins)
 		return 0;
 

@@ -372,6 +372,12 @@ config BACKLIGHT_LM3630A
 	help
 	  This supports TI LM3630A Backlight Driver
 
+config BACKLIGHT_NTXBL
+	tristate "Backlight Driver for Netronix Frontlight interface"
+	depends on BACKLIGHT_CLASS_DEVICE && I2C && PWM
+	help
+	  This supports Netronix Backlight/Frontlight Driver
+
 config BACKLIGHT_LM3639
 	tristate "Backlight Driver for LM3639"
 	depends on BACKLIGHT_CLASS_DEVICE && I2C
@@ -450,6 +456,12 @@ config BACKLIGHT_BD6107
 	depends on I2C
 	help
 	  If you have a Rohm BD6107 say Y to enable the backlight driver.
+
+config BACKLIGHT_TLC5947
+	tristate "Backlight Driver for TLC5947"
+	depends on SPI
+	help
+	  This supports TI TLC5947 Backlight Driver
 
 endif # BACKLIGHT_CLASS_DEVICE
 

@@ -241,10 +241,34 @@ config USB_MASS_STORAGE
 	  specified as a module parameter or sysfs option.
 
 	  This driver is a replacement for now removed File-backed
+	  Storage Gadget (g_mass_storage).
+
+	  Say "y" to link the driver statically, or "m" to build
+	  a dynamically linked module called "g_mass_storage".
+
+config FSL_UTP
+	bool "UTP over Storage Gadget"
+	depends on USB_MASS_STORAGE
+	help
+	  Freescale's extension to MSC protocol
+
+config USB_FILE_STORAGE
+	tristate "File Storage Gadget"
+	depends on BLOCK
+	select USB_LIBCOMPOSITE
+	select USB_F_MASS_STORAGE
+	help
+	  The Mass Storage Gadget acts as a USB Mass Storage disk drive.
+	  As its storage repository it can use a regular file or a block
+	  device (in much the same way as the "loop" device driver),
+	  specified as a module parameter or sysfs option.
+
+	  This driver is a replacement for now removed File-backed
 	  Storage Gadget (g_file_storage).
 
 	  Say "y" to link the driver statically, or "m" to build
 	  a dynamically linked module called "g_mass_storage".
+
 
 config USB_GADGET_TARGET
 	tristate "USB Gadget Target Fabric Module"

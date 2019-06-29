@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Freescale Semiconductor, Inc.
+ * Copyright 2013-2016 Freescale Semiconductor, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -18,8 +18,9 @@
 
 #include "common.h"
 #include "cpuidle.h"
+#include "hardware.h"
 
-static void __init imx6sl_fec_init(void)
+static void __init imx6sl_fec_clk_init(void)
 {
 	struct regmap *gpr;
 
@@ -30,10 +31,17 @@ static void __init imx6sl_fec_init(void)
 			IMX6SL_GPR1_FEC_CLOCK_MUX2_SEL_MASK, 0);
 		regmap_update_bits(gpr, IOMUXC_GPR1,
 			IMX6SL_GPR1_FEC_CLOCK_MUX1_SEL_MASK, 0);
-	} else {
+	} else
 		pr_err("failed to find fsl,imx6sl-iomux-gpr regmap\n");
-	}
 }
+
+static inline void imx6sl_fec_init(void)
+{
+	imx6sl_fec_clk_init();
+	imx6_enet_mac_init("fsl,imx6sl-fec", "fsl,imx6sl-ocotp");
+}
+
+extern void ntx_wifi_power_ctrl (int isWifiEnable);
 
 static void __init imx6sl_init_late(void)
 {
@@ -41,7 +49,13 @@ static void __init imx6sl_init_late(void)
 	if (IS_ENABLED(CONFIG_ARM_IMX6Q_CPUFREQ))
 		platform_device_register_simple("imx6q-cpufreq", -1, NULL, 0);
 
-	imx6sl_cpuidle_init();
+	ntx_wifi_power_ctrl (0);
+
+	/* cpuidle will be enabled later for i.MX6SLL */
+	if (cpu_is_imx6sll())
+		imx6sll_cpuidle_init();
+	else
+		imx6sl_cpuidle_init();
 }
 
 static void __init imx6sl_init_machine(void)
@@ -52,9 +66,16 @@ static void __init imx6sl_init_machine(void)
 	if (parent == NULL)
 		pr_warn("failed to initialize soc device\n");
 
+#if 0	// This will move all on-SOC devices from /sys/devices/platform to /sys/devices/soc0.
 	of_platform_populate(NULL, of_default_bus_match_table, NULL, parent);
+#else
+	of_platform_populate(NULL, of_default_bus_match_table, NULL, NULL);
+#endif
 
-	imx6sl_fec_init();
+	ntx_parse_cmdline();
+
+	if (!cpu_is_imx6sll())
+		imx6sl_fec_init();
 	imx_anatop_init();
 	imx6sl_pm_init();
 }
@@ -68,12 +89,23 @@ static void __init imx6sl_init_irq(void)
 	irqchip_init();
 }
 
+static void __init imx6sl_map_io(void)
+{
+	debug_ll_io_init();
+	imx6_pm_map_io();
+#ifdef CONFIG_CPU_FREQ
+	imx_busfreq_map_io();
+#endif
+}
+
 static const char * const imx6sl_dt_compat[] __initconst = {
 	"fsl,imx6sl",
+	"fsl,imx6sll",
 	NULL,
 };
 
 DT_MACHINE_START(IMX6SL, "Freescale i.MX6 SoloLite (Device Tree)")
+	.map_io		= imx6sl_map_io,
 	.init_irq	= imx6sl_init_irq,
 	.init_machine	= imx6sl_init_machine,
 	.init_late      = imx6sl_init_late,

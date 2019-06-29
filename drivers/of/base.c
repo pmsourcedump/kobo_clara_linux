@@ -1884,6 +1884,124 @@ static void of_alias_add(struct alias_prop *ap, struct device_node *np,
 		 ap->alias, ap->stem, ap->id, of_node_full_name(np));
 }
 
+/*
+ * of_alias_max_index() - get the maximum index for a given alias stem
+ * @stem:   The alias stem for which the maximum index is searched for
+ *
+ * Given an alias stem (the alias without the number) this function
+ * returns the maximum number for which an alias exists.
+ *
+ * Return: The maximum existing alias index or -ENODEV if no alias
+ *         exists for this stem.
+ */
+int of_alias_max_index(const char *stem)
+{
+	struct alias_prop *app;
+	int max = -ENODEV;
+
+	mutex_lock(&of_mutex);
+
+	list_for_each_entry(app, &aliases_lookup, link) {
+		if (strcmp(app->stem, stem))
+			continue;
+		if (app->id > max)
+			max = app->id;
+	}
+
+	mutex_unlock(&of_mutex);
+
+	return max;
+}
+EXPORT_SYMBOL_GPL(of_alias_max_index);
+
+
+/*
+ * of_alias_id_exchange() - exchange the alias deivce id for a given alias stem
+ * @stem:   The alias stem for which the maximum index is searched for
+ *
+ * Given an alias stem (the alias without the number) this function
+ * returns the maximum number for which an alias exists.
+ *
+ * Return: The maximum existing alias index or -ENODEV if no alias
+ *         exists for this stem.
+ */
+int of_alias_id_exchange(const char *stem,int id1,int id2)
+{
+	struct alias_prop *app, *app1=0 , *app2=0;
+	//struct device_node *npTemp;
+	//char *aliasTemp;
+	int iRet = -1;
+	int idTemp;
+
+	mutex_lock(&of_mutex);
+
+	list_for_each_entry(app, &aliases_lookup, link) {
+		if (strcmp(app->stem, stem))
+			continue;
+
+		if (app->id == id1) {
+			app1 = app ;
+		}
+		else
+		if (app->id == id2) {
+			app2 = app ;
+		}
+	}
+
+	if(app1 && app2) {
+
+#if 0
+		printk("%s np@%p (%s) id=%d ,%s np@%p (%s) id=%d exchanging \n",
+			app1->alias,app1->np,app1->np->full_name,app1->id ,
+			app2->alias,app2->np,app2->np->full_name,app2->id);
+#endif
+
+		iRet = 0;
+		//npTemp = app1->np;
+		idTemp = app1->id;
+		//aliasTemp = app1->alias;
+
+		//app1->np = app2->np;
+		app1->id = app2->id;
+		//app1->alias = app2->alias;
+
+		//app2->np = npTemp;
+		app2->id = idTemp;
+		//app2->alias = aliasTemp;
+
+#if 0
+		printk("%s np@%p (%s) id=%d<==> %s np@%p (%s) id=%d\n",
+			app1->alias,app1->np,app1->np->full_name,app1->id,
+			app2->alias,app2->np,app2->np->full_name,app2->id);
+#endif
+
+	}
+
+	mutex_unlock(&of_mutex);
+
+	return iRet;
+}
+struct device_node *of_alias_get_device_node_by_id(const char *stem,int id)
+{
+	struct alias_prop *app;
+	struct device_node *np = 0;
+
+	mutex_lock(&of_mutex);
+
+	list_for_each_entry(app, &aliases_lookup, link) {
+		if (strcmp(app->stem, stem))
+			continue;
+
+		if (app->id == id) {
+			np = app->np ;
+		}
+	}
+	mutex_unlock(&of_mutex);
+
+	return np;
+}
+
+
 /**
  * of_alias_scan - Scan all properties of the 'aliases' node
  *
@@ -1981,6 +2099,7 @@ int of_alias_get_id(struct device_node *np, const char *stem)
 	return id;
 }
 EXPORT_SYMBOL_GPL(of_alias_get_id);
+
 
 /**
  * of_alias_get_highest_id - Get highest alias id for the given stem
